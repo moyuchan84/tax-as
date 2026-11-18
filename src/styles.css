@@ -235,3 +235,9 @@ small.good { color: var(--good); }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: 72px; background: var(--text); color: var(--bg); padding: 8px 14px; border-radius: 8px; z-index: 30; max-width: calc(100vw - 32px); }
 footer p { margin: 0 0 6px; }
 @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+
+.breakeven { margin-top: 12px; padding: 10px 12px; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 8px; }
+.breakeven h4 { margin: 0 0 4px; }
+.breakeven .headline { margin: 0 0 6px; font-weight: 600; }
+.breakeven ul { margin: 0; padding-left: 18px; font-size: 13px; color: var(--muted); }
+.breakeven li { margin-bottom: 4px; }

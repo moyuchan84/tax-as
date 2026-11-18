@@ -56,3 +56,23 @@ describe('이정표', () => {
     expect(ms.w[0].note.length).toBeGreaterThan(0);
   });
 });
+
+import { breakevenLines, cardBreakeven } from './plan';
+describe('카드 손익분기', () => {
+  const hh = sampleHousehold();
+  const opt = optimizeHousehold(hh);
+  const be = cardBreakeven(opt.bestResult)!;
+  it('고소득 쪽이 세율이 높고 문턱·한도 지점이 순서대로다', () => {
+    expect(be.hi).toBe('h');
+    expect(be.thr.h).toBeGreaterThan(be.thr.w);
+    expect(be.tHiFirst).not.toBeNull();
+    expect(be.tHiFirst!).toBeGreaterThan(be.thr.h);
+    expect(be.tHiFirst!).toBeLessThan(be.full.h);
+    expect(be.tBoth).toBeCloseTo(be.full.h + be.full.w, 0);
+  });
+  it('설명 문구가 만들어진다', () => {
+    const t = breakevenLines(be, { h: '남편', w: '아내' }, 3000 * M);
+    expect(t.headline).toContain('남편');
+    expect(t.lines.length).toBeGreaterThanOrEqual(4);
+  });
+});

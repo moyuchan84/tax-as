@@ -14,6 +14,7 @@ import type { OptimizeResult } from './optimizer';
 import { RULES } from './rules';
 import type { HouseholdInput, Spouse } from './types';
 import { man, pct, won } from './format';
+import { breakevenLines, cardBreakeven } from './plan';
 
 export interface Tip {
   title: string;
@@ -114,6 +115,26 @@ export function buildStrategy(hh: HouseholdInput, opt: OptimizeResult): Tip[] {
         detail = `카드 공제 ${man(c.deduction)} (최대 ${man(cap)}). 신용카드로 약 ${man(c.roomToBaseLimit)}을 더 쓰면(체크·현금은 절반) 기본한도를 채웁니다.`;
       }
       tips.push({ level: 'info', title: `${NAME(hh, who)} 카드 공제 상태`, detail });
+    }
+  }
+
+  // 3-1. 카드: 고소득자 vs 저소득자, 누구에게 몰아야 하나
+  if (CARD_KEYS.some((k) => totals[k] > 0)) {
+    const be = cardBreakeven(R);
+    if (be) {
+      const cur = CARD_KEYS.reduce((t, k) => t + totals[k], 0);
+      const { headline, lines } = breakevenLines(be, { h: nH, w: nW }, cur);
+      tips.push({
+        level: 'info',
+        title: '카드 공제: 고소득자 vs 저소득자, 누구에게 몰까',
+        detail:
+          `${headline}. ` +
+          '핵심: 문턱(총급여 25%)은 고소득자가 높아 불리하고, 세율은 고소득자가 높아 유리합니다. 그래서 지출 규모에 따라 답이 달라집니다. ' +
+          lines.join(' / ') +
+          ' · 문턱 구간은 신용카드로 채우세요(최저사용금액은 신용카드 사용분부터 차감되고, 그 위는 체크·현금 30%, 전통시장·대중교통 40%가 유리합니다). ' +
+          '· 실제로 그 사람 명의 카드로 결제해야 합니다. 소득 있는 배우자의 카드 사용분은 서로 공제받을 수 없습니다. ' +
+          '· 이미 지난 달 결제는 바꿀 수 없으니, 남은 기간(12월까지) 지출 방향을 정하는 데 쓰세요. 경계 금액은 체크카드 위주로 단순화한 값이며 정확한 분배는 ‘지출 플랜’ 탭의 표를 보세요.',
+      });
     }
   }
 

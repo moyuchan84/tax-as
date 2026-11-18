@@ -263,3 +263,80 @@ export function milestones(hh: HouseholdInput, best: Allocation, res: { h: TaxRe
   }
   return out;
 }
+
+// ------------------------------------------------------------------ 카드: 고소득 vs 저소득 손익분기
+
+export interface Breakeven {
+  hi: Spouse; // 한계세율이 높은 쪽 (같으면 총급여가 높은 쪽)
+  lo: Spouse;
+  thr: Record<Spouse, number>; // 공제 문턱 (총급여 25%)
+  full: Record<Spouse, number>; // 기본한도를 채우는 총지출 (체크·현금 30% 가정)
+  rate: Record<Spouse, number>; // 지방세 포함 한계세율
+  maxSave: Record<Spouse, number>; // 한도를 채웠을 때 절세액
+  /** 부부 합산 지출이 이 금액 이상이면 고소득자 한 명에게 몰아주는 쪽이 유리 (null이면 계속 저소득자 우선) */
+  tHiFirst: number | null;
+  /** 이 금액 이상이면 한 명이 한도를 채운 뒤 나머지를 다른 배우자에게 나누는 쪽이 유리 */
+  tSplit: number | null;
+  /** 이 금액 이상이면 두 사람 모두 한도 → 더 써도 공제 증가 없음 */
+  tBoth: number;
+}
+
+/**
+ * 단순 모델(전부 체크카드·현금영수증 30%, 추가한도 제외)로 "누구에게 몰아야 하나"의 경계 금액을 구한다.
+ * 정확한 값은 지출 플랜 표(격자 탐색)가 계산하고, 여기서는 사람이 이해할 기준선을 제공한다.
+ */
+export function cardBreakeven(res: { h: TaxResult; w: TaxResult }): Breakeven | null {
+  if (res.h.salary <= 0 || res.w.salary <= 0) return null;
+  const rate = { h: res.h.marginalRate * (1 + RULES.localTaxRate), w: res.w.marginalRate * (1 + RULES.localTaxRate) };
+  const hi: Spouse = rate.h !== rate.w ? (rate.h > rate.w ? 'h' : 'w') : res.h.salary >= res.w.salary ? 'h' : 'w';
+  const lo: Spouse = hi === 'h' ? 'w' : 'h';
+  const r = RULES.card.rates.debitCash;
+  const thr = { h: res.h.card.minSpend, w: res.w.card.minSpend };
+  const lim = { h: res.h.card.baseLimit, w: res.w.card.baseLimit };
+  const full = { h: thr.h + lim.h / r, w: thr.w + lim.w / r };
+  const save = (who: Spouse, x: number) => Math.min(Math.max(x - thr[who], 0) * r, lim[who]) * rate[who];
+  const maxSave = { h: save('h', full.h), w: save('w', full.w) };
+  const tBoth = full.h + full.w;
+
+  const STEP = 100_000;
+  let tHiFirst: number | null = null;
+  let tSplit: number | null = null;
+  for (let t = STEP; t <= tBoth + STEP; t += STEP) {
+    const allHi = save(hi, t);
+    const allLo = save(lo, t);
+    if (tHiFirst === null && allHi > 0 && allHi >= allLo) tHiFirst = t;
+    if (tSplit === null) {
+      let best = 0;
+      for (let x = 0; x <= t; x += STEP) best = Math.max(best, save(hi, x) + save(lo, t - x));
+      if (best > Math.max(allHi, allLo) + 1) tSplit = t;
+    }
+    if (tHiFirst !== null && tSplit !== null) break;
+  }
+  return { hi, lo, thr, full, rate, maxSave, tHiFirst, tSplit, tBoth };
+}
+
+/** 사람이 읽는 설명 (전략 가이드·지출 플랜 공용). currentTotal은 부부 합산 카드·현금 지출. */
+export function breakevenLines(b: Breakeven, name: Record<Spouse, string>, currentTotal: number): { headline: string; lines: string[] } {
+  const { hi, lo } = b;
+  const own = (s: Spouse) =>
+    `${name[s]}(한계세율 ${pct(b.rate[s])}): 문턱 ${man(b.thr[s])}, 한도를 채우는 총지출 약 ${man(b.full[s])}, 한도를 채우면 최대 ${man(b.maxSave[s])} 절세`;
+  const lines: string[] = [`고소득 쪽 → ${own(hi)}`, `저소득 쪽 → ${own(lo)}`];
+
+  if (b.tHiFirst === null) {
+    lines.push(`세율 차이보다 문턱 차이가 커서, 합산 지출이 어느 규모든 문턱이 낮은 ${name[lo]}에게 먼저 쓰는 편이 유리합니다.`);
+  } else {
+    lines.push(`합산 지출 ${man(b.tHiFirst)} 미만: 문턱이 낮은 ${name[lo]} 한 명에게 — 고소득자는 문턱을 못 넘겨 공제가 거의 없습니다.`);
+    lines.push(
+      `합산 지출 ${man(b.tHiFirst)} ~ ${man(b.tSplit ?? b.tBoth)}: 세율이 높은 ${name[hi]}에게 몰아 한도(약 ${man(b.full[hi])})까지 — 같은 공제도 절세액이 더 큽니다.`,
+    );
+  }
+  if (b.tSplit !== null) lines.push(`합산 지출 ${man(b.tSplit)} 이상: 한 명이 한도를 채우고 남는 지출은 다른 배우자 카드로 — 둘 다 문턱을 넘기 시작합니다.`);
+  lines.push(`합산 지출 ${man(b.tBoth)} 이상: 두 사람 모두 한도라서 더 써도 공제가 늘지 않습니다.`);
+
+  let now: string;
+  if (b.tHiFirst === null || currentTotal < b.tHiFirst) now = `${name[lo]} 한 명에게 몰기`;
+  else if (b.tSplit === null || currentTotal < b.tSplit) now = `${name[hi]}에게 몰아 한도 채우기`;
+  else if (currentTotal < b.tBoth) now = `한 명이 한도를 채우고 나머지는 다른 배우자에게`;
+  else now = '두 사람 모두 한도를 채운 상태 (추가 지출은 공제 효과 없음)';
+  return { headline: `현재 입력한 합산 지출 ${man(currentTotal)} → ${now}`, lines };
+}
