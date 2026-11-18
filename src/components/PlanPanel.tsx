@@ -3,7 +3,7 @@ import { man, pct, won } from '../tax/format';
 
 const n = (v: number) => Math.round(v / 10_000).toLocaleString('ko-KR');
 import type { OptimizeResult } from '../tax/optimizer';
-import { STYLES, STYLE_LABEL, cardPlan, milestones, type Milestone, type PlanCell } from '../tax/plan';
+import { STYLES, STYLE_LABEL, breakevenLines, cardBreakeven, cardPlan, cardSum, milestones, type Milestone, type PlanCell } from '../tax/plan';
 import type { HouseholdInput } from '../tax/types';
 import { CardChart } from './CardChart';
 
@@ -61,6 +61,9 @@ export function PlanPanel({ hh, opt }: { hh: HouseholdInput; opt: OptimizeResult
   const rows = useMemo(() => cardPlan(hh, opt.best), [hh, opt.best]);
   const ms = useMemo(() => milestones(hh, opt.best, opt.bestResult), [hh, opt.best, opt.bestResult]);
   const r = opt.bestResult;
+  const be = useMemo(() => cardBreakeven(opt.bestResult), [opt.bestResult]);
+  const cur = cardSum({ credit: hh.husband.cards.credit + hh.wife.cards.credit, debitCash: hh.husband.cards.debitCash + hh.wife.cards.debitCash, market: hh.husband.cards.market + hh.wife.cards.market, transport: hh.husband.cards.transport + hh.wife.cards.transport, culture: hh.husband.cards.culture + hh.wife.cards.culture });
+  const bl = be ? breakevenLines(be, { h: nH, w: nW }, cur) : null;
 
   return (
     <div className="plan">
@@ -108,6 +111,18 @@ export function PlanPanel({ hh, opt }: { hh: HouseholdInput; opt: OptimizeResult
           </tbody>
         </table>
       </div>
+
+      {bl && (
+        <div className="breakeven">
+          <h4>고소득자 vs 저소득자, 누구에게 몰까</h4>
+          <p className="headline">{bl.headline}</p>
+          <ul>
+            {bl.lines.map((l, i) => (
+              <li key={i}>{l}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <ul className="rules">
         <li>
