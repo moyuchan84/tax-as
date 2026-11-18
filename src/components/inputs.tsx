@@ -1,4 +1,7 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+
+/** 싱글이면 두 번째 사람(배우자) 열을 그리지 않는다 */
+export const SingleCtx = createContext(false);
 
 const M = 10_000;
 
@@ -79,14 +82,15 @@ export function Section({ title, hint, children, defaultOpen = true }: { title: 
 
 /** 라벨 | 남편 | 아내 3열 행 */
 export function PairRow({ label, hint, h, w }: { label: string; hint?: string; h: ReactNode; w: ReactNode }) {
+  const single = useContext(SingleCtx);
   return (
-    <div className="pair-row">
+    <div className={single ? 'pair-row single' : 'pair-row'}>
       <div className="pair-label">
         {label}
         {hint && <small>{hint}</small>}
       </div>
       <div>{h}</div>
-      <div>{w}</div>
+      {!single && <div>{w}</div>}
     </div>
   );
 }

@@ -3,7 +3,7 @@ import type { OptimizeResult } from '../tax/optimizer';
 import type { Tip } from '../tax/strategy';
 
 /** 화면 맨 위: 입력하자마자 보이는 "올해 이렇게 하세요" 요약 */
-export function ActionBoard({ opt, tips, onMore }: { opt: OptimizeResult; tips: Tip[]; onMore: () => void }) {
+export function ActionBoard({ opt, tips, onMore, single }: { opt: OptimizeResult; tips: Tip[]; onMore: () => void; single?: boolean }) {
   const moves = tips
     .filter((t) => t.level === 'action' && t.kind !== 'extra' && (t.saving ?? 0) > 0)
     .sort((a, b) => (b.saving ?? 0) - (a.saving ?? 0));
@@ -15,14 +15,16 @@ export function ActionBoard({ opt, tips, onMore }: { opt: OptimizeResult; tips: 
   return (
     <section className="board" aria-label="추천 요약">
       <div className="board-hero">
-        <div className="hero-label">부부 합산 세금(소득세+지방세) 예상</div>
+        <div className="hero-label">{single ? '예상 세금(소득세+지방세)' : '부부 합산 세금(소득세+지방세) 예상'}</div>
         <div className="hero-flow">
-          <span className="from">{won(b.total)}</span>
-          <span className="arrow">→</span>
+          {!single && <span className="from">{won(b.total)}</span>}
+          {!single && <span className="arrow">→</span>}
           <span className="to">{won(r.total)}</span>
         </div>
-        <div className={opt.savings > 0 ? 'hero-save' : 'hero-save none'}>
-          {opt.savings > 0 ? (
+        <div className={single || opt.savings > 0 ? 'hero-save' : 'hero-save none'}>
+          {single ? (
+            '아래 항목을 챙기면 더 줄일 수 있어요'
+          ) : opt.savings > 0 ? (
             <>
               명의만 바꿔도 <b>{won(opt.savings)}</b> 절세
             </>
@@ -33,8 +35,8 @@ export function ActionBoard({ opt, tips, onMore }: { opt: OptimizeResult; tips: 
       </div>
 
       <div className="board-actions">
-        <h2>이렇게 하세요</h2>
-        {moves.length === 0 ? (
+        <h2>{single ? '추가로 챙기면 좋은 것' : '이렇게 하세요'}</h2>
+        {moves.length === 0 && single ? null : moves.length === 0 ? (
           <p className="muted">명의를 바꿔서 줄일 수 있는 세금이 없습니다. 아래 ‘추가로 하면 좋은 것’을 확인하세요.</p>
         ) : (
           <ol className="steps">

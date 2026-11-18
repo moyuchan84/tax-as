@@ -58,7 +58,7 @@ function Cell({ c, nH, nW }: { c: PlanCell; nH: string; nW: string }) {
 export function PlanPanel({ hh, opt }: { hh: HouseholdInput; opt: OptimizeResult }) {
   const nH = hh.husband.name || '남편';
   const nW = hh.wife.name || '아내';
-  const rows = useMemo(() => cardPlan(hh, opt.best), [hh, opt.best]);
+  const rows = useMemo(() => (hh.single ? [] : cardPlan(hh, opt.best)), [hh, opt.best]);
   const ms = useMemo(() => milestones(hh, opt.best, opt.bestResult), [hh, opt.best, opt.bestResult]);
   const r = opt.bestResult;
   const be = useMemo(() => cardBreakeven(opt.bestResult), [opt.bestResult]);
@@ -69,8 +69,8 @@ export function PlanPanel({ hh, opt }: { hh: HouseholdInput; opt: OptimizeResult
     <div className="plan">
       <h3>지금 어디까지 왔나</h3>
       <p className="muted">최적 배분 기준으로, 각자의 지출이 공제 문턱·한도의 어디쯤인지 보여줍니다.</p>
-      <div className="two">
-        {(['h', 'w'] as const).map((who) => (
+      <div className={hh.single ? '' : 'two'}>
+        {(hh.single ? (['h'] as const) : (['h', 'w'] as const)).map((who) => (
           <div key={who} className="person">
             <h4>{who === 'h' ? nH : nW}</h4>
             {ms[who].length === 0 && <p className="muted">총급여를 입력하세요.</p>}
@@ -81,6 +81,17 @@ export function PlanPanel({ hh, opt }: { hh: HouseholdInput; opt: OptimizeResult
         ))}
       </div>
 
+      {hh.single ? (
+        <ul className="rules">
+          <li>
+            <b>공제 문턱</b>은 총급여의 25%({man(r.h.card.minSpend)})이고 최저사용금액은 <b>신용카드 사용분부터</b> 차감됩니다. 문턱까지는 혜택 좋은 신용카드, 그 위는 체크·현금영수증(30%)이나 전통시장·대중교통(40%)이 유리합니다.
+          </li>
+          <li>
+            기본한도({man(r.h.card.baseLimit)})를 채우려면 문턱 위로 체크·현금 기준 약 {man(r.h.card.baseLimit / 0.3)}이 필요하고, 한도를 넘으면 더 써도 공제가 늘지 않습니다.
+          </li>
+        </ul>
+      ) : (
+        <>
       <h3>카드 지출 규모별 플랜</h3>
       <p className="muted">
         부부가 한 해 카드·현금영수증을 합쳐 <b>얼마를 쓰는가</b>, 그리고 <b>어떤 결제수단 위주인가</b>에 따라 누구 명의로 얼마씩 쓰는 게 가장 유리한지입니다. 다른 항목은 최적 배분
@@ -144,6 +155,8 @@ export function PlanPanel({ hh, opt }: { hh: HouseholdInput; opt: OptimizeResult
         내 카드 사용액 전체 중 {nH} 몫의 비중을 바꿀 때 부부 합산 세금입니다. 계단이 있는 곡선이라면 한 사람에게 몰아줄 때 효과가 급격히 변하는 구간입니다.
       </p>
       <CardChart hh={hh} best={opt.best} nH={nH} nW={nW} />
+        </>
+      )}
     </div>
   );
 }

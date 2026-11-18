@@ -54,6 +54,8 @@ export const RULES = {
     disabled: 2_000_000,
     woman: 500_000, // 부녀자 (배우자 있는 여성, 종합소득금액 3천만 이하)
     womanIncomeLimit: 30_000_000,
+    spouseWageLimit: 5_000_000, // 배우자 소득요건: 총급여 500만원 이하(근로소득금액 100만원 이하)
+    spouseIncomeLimit: 1_000_000, // 종합소득금액 100만원 이하
     childMaxAge: 20,
     parentMinAge: 60,
   },

@@ -29,7 +29,7 @@ export function ResultPanel({ hh, opt, tips, tab, onTab }: Props) {
   return (
     <div className="results">
       <div className="tabs" role="tablist">
-        {TABS.map((t) => (
+        {TABS.filter((t) => !(hh.single && t.id === 'alloc')).map((t) => (
           <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'tab on' : 'tab'} onClick={() => onTab(t.id)}>
             {t.label}
           </button>
@@ -117,7 +117,7 @@ export function ResultPanel({ hh, opt, tips, tab, onTab }: Props) {
               </button>
             </span>
           </h3>
-          <Breakdown h={(view === 'best' ? r : b).h} w={(view === 'best' ? r : b).w} nH={nH} nW={nW} />
+          <Breakdown h={(view === 'best' ? r : b).h} w={(view === 'best' ? r : b).w} nH={nH} nW={nW} single={!!hh.single} />
         </div>
       )}
     </div>
@@ -171,7 +171,7 @@ function AllocationTable({ hh, opt }: { hh: HouseholdInput; opt: OptimizeResult 
   );
 }
 
-function Breakdown({ h, w, nH, nW }: { h: TaxResult; w: TaxResult; nH: string; nW: string }) {
+function Breakdown({ h, w, nH, nW, single }: { h: TaxResult; w: TaxResult; nH: string; nW: string; single: boolean }) {
   const rows: [string, (r: TaxResult) => string, string?][] = [
     ['총급여', (r) => won(r.salary)],
     ['− 근로소득공제', (r) => won(r.earnedDeduction)],
@@ -207,7 +207,7 @@ function Breakdown({ h, w, nH, nW }: { h: TaxResult; w: TaxResult; nH: string; n
         <tr>
           <th />
           <th>{nH}</th>
-          <th>{nW}</th>
+          {!single && <th>{nW}</th>}
         </tr>
       </thead>
       <tbody>
@@ -215,7 +215,7 @@ function Breakdown({ h, w, nH, nW }: { h: TaxResult; w: TaxResult; nH: string; n
           <tr key={label} className={cls}>
             <td>{label}</td>
             <td>{f(h)}</td>
-            <td>{f(w)}</td>
+            {!single && <td>{f(w)}</td>}
           </tr>
         ))}
       </tbody>

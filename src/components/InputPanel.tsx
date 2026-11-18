@@ -4,7 +4,7 @@ import { man, pct } from '../tax/format';
 import { STYLES, STYLE_LABEL, annualSalary, cardSum, detectStyle, estimateWithheld, splitSpend, type SpendStyle } from '../tax/plan';
 import { newDependent } from '../tax/sample';
 import type { DependentInput, EducationType, HouseholdInput, PersonProfile, Relation, Spouse } from '../tax/types';
-import { Check, IntInput, MoneyInput, PairRow, Section } from './inputs';
+import { Check, IntInput, MoneyInput, PairRow, Section, SingleCtx } from './inputs';
 
 type Props = { hh: HouseholdInput; onChange: (hh: HouseholdInput) => void };
 
@@ -105,20 +105,24 @@ export function InputPanel({ hh, onChange }: Props) {
   const setDep = (i: number, patch: Partial<DependentInput>) =>
     onChange({ ...hh, dependents: hh.dependents.map((d, j) => (j === i ? { ...d, ...patch } : d)) });
 
+  const single = !!hh.single;
   return (
+    <SingleCtx.Provider value={single}>
     <div className="inputs">
       <p className="guide">
         <span className="step">1</span> 소득 <i>→</i> <span className="step">2</span> 올해 예상 지출 <i>→</i> <span className="step">3</span> 가족. 값을 바꾸면 오른쪽 추천이 바로 갱신됩니다. 금액은 모두 <strong>만원</strong> 단위입니다.
       </p>
 
-      <div className="pair-row head">
+      <div className={single ? 'pair-row head single' : 'pair-row head'}>
         <div />
         <div>
           <input className="name" value={hh.husband.name} onChange={(e) => setPerson('h', { name: e.target.value })} aria-label="남편 이름" />
         </div>
-        <div>
-          <input className="name" value={hh.wife.name} onChange={(e) => setPerson('w', { name: e.target.value })} aria-label="아내 이름" />
-        </div>
+        {!single && (
+          <div>
+            <input className="name" value={hh.wife.name} onChange={(e) => setPerson('w', { name: e.target.value })} aria-label="아내 이름" />
+          </div>
+        )}
       </div>
 
       <Section title="1. 소득" hint="급여명세서·원천징수영수증 기준">
@@ -194,13 +198,17 @@ export function InputPanel({ hh, onChange }: Props) {
             {card('culture', '도서·공연·헬스장·수영장', '30%, 총급여 7천 이하')}
           </div>
         </details>
-        <Check checked={hh.flex.cards} onChange={(v) => onChange({ ...hh, flex: { ...hh.flex, cards: v } })}>
-          부부 간에 카드 사용을 옮길 수 있음 (최적화 대상)
-        </Check>
+        {!single && (
+          <Check checked={hh.flex.cards} onChange={(v) => onChange({ ...hh, flex: { ...hh.flex, cards: v } })}>
+            부부 간에 카드 사용을 옮길 수 있음 (최적화 대상)
+          </Check>
+        )}
         <PairRow label="본인 의료비" hint="실손보험금 수령분 제외" {...money((p) => p.medical, (_, v) => ({ medical: v }), '본인 의료비')} />
-        <Check checked={hh.flex.medical} onChange={(v) => onChange({ ...hh, flex: { ...hh.flex, medical: v } })}>
-          배우자 의료비를 대신 결제할 수 있음 (최적화 대상)
-        </Check>
+        {!single && (
+          <Check checked={hh.flex.medical} onChange={(v) => onChange({ ...hh, flex: { ...hh.flex, medical: v } })}>
+            배우자 의료비를 대신 결제할 수 있음 (최적화 대상)
+          </Check>
+        )}
         <PairRow label="본인 교육비" hint="대학원·직업훈련 등" {...money((p) => p.ownEducation, (_, v) => ({ ownEducation: v }), '본인 교육비')} />
         <PairRow label="보장성보험료" hint="연 100만 한도 12%" {...money((p) => p.insurance, (_, v) => ({ insurance: v }), '보장성보험료')} />
         <PairRow label="장애인전용보험" {...money((p) => p.disabledInsurance, (_, v) => ({ disabledInsurance: v }), '장애인전용보험')} />
@@ -237,7 +245,7 @@ export function InputPanel({ hh, onChange }: Props) {
               </select>
               {d.educationType !== 'none' && <MoneyInput value={d.education} onChange={(v) => setDep(i, { education: v })} ariaLabel="교육비" />}
             </div>
-            <div className="dep-row">
+            {!single && <div className="dep-row">
               <span className="muted">현재 공제자</span>
               <select value={d.assignedTo} onChange={(e) => setDep(i, { assignedTo: e.target.value as Spouse })} aria-label="현재 공제자">
                 <option value="h">{hh.husband.name || '남편'}</option>
@@ -246,7 +254,7 @@ export function InputPanel({ hh, onChange }: Props) {
               <Check checked={d.locked} onChange={(v) => setDep(i, { locked: v })}>
                 고정 (옮기지 않음)
               </Check>
-            </div>
+            </div>}
           </div>
         ))}
         <button type="button" onClick={() => onChange({ ...hh, dependents: [...hh.dependents, newDependent()] })}>
@@ -255,7 +263,7 @@ export function InputPanel({ hh, onChange }: Props) {
       </Section>
 
       <Section title="더 입력하기: 주택·기부금" hint="있을 때만" defaultOpen={false}>
-        <div className="row-inline">
+        {!single && <div className="row-inline">
           <span>세대주</span>
           <select value={hh.housing.head} onChange={(e) => onChange({ ...hh, housing: { ...hh.housing, head: e.target.value as Spouse } })}>
             <option value="h">{hh.husband.name || '남편'}</option>
@@ -264,7 +272,7 @@ export function InputPanel({ hh, onChange }: Props) {
           <Check checked={hh.housing.headLocked} onChange={(v) => onChange({ ...hh, housing: { ...hh.housing, headLocked: v } })}>
             고정
           </Check>
-        </div>
+        </div>}
         <div className="row-inline">
           <span>연간 월세 합계</span>
           <MoneyInput value={hh.housing.rent} onChange={(v) => onChange({ ...hh, housing: { ...hh.housing, rent: v } })} />
@@ -290,10 +298,13 @@ export function InputPanel({ hh, onChange }: Props) {
         {don('general', '일반·특례 기부금', '15%, 1천만 초과 30%')}
         {don('political', '정치자금', '10만까지 100/110')}
         {don('hometown', '고향사랑', '10만까지 100/110')}
-        <Check checked={hh.flex.donations} onChange={(v) => onChange({ ...hh, flex: { ...hh.flex, donations: v } })}>
-          기부 명의를 나눌 수 있음 (최적화 대상)
-        </Check>
+        {!single && (
+          <Check checked={hh.flex.donations} onChange={(v) => onChange({ ...hh, flex: { ...hh.flex, donations: v } })}>
+            기부 명의를 나눌 수 있음 (최적화 대상)
+          </Check>
+        )}
       </Section>
     </div>
+    </SingleCtx.Provider>
   );
 }

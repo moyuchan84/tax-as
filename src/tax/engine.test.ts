@@ -122,3 +122,24 @@ describe('개인 세액', () => {
     expect(r.lostCredits).toBeGreaterThan(0);
   });
 });
+
+describe('외벌이 배우자공제', () => {
+  it('배우자 소득이 요건 이하이면 소득 높은 쪽이 기본공제를 받는다', async () => {
+    const { buildPersonInputs, baselineAllocation } = await import('./household');
+    const { emptyPerson } = await import('./sample');
+    const hh = {
+      husband: { ...emptyPerson('남편'), salary: 6000 * M },
+      wife: { ...emptyPerson('아내'), salary: 0 },
+      dependents: [],
+      housing: { head: 'h' as const, headLocked: false, rent: 0, leaseLoanRepay: 0 },
+      flex: { cards: true, medical: true, donations: true },
+    };
+    const inp = buildPersonInputs(hh, baselineAllocation(hh));
+    expect(inp.h.dependents.map((d) => d.relation)).toEqual(['spouse']);
+    expect(inp.w.dependents).toEqual([]);
+    expect(computePersonTax(inp.h).basicCount).toBe(2);
+    // 싱글이면 배우자공제 없음
+    const single = buildPersonInputs({ ...hh, single: true }, baselineAllocation(hh));
+    expect(single.h.dependents).toEqual([]);
+  });
+});

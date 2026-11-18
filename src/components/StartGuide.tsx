@@ -27,8 +27,11 @@ export function StartGuide({ hh }: { hh: HouseholdInput }) {
 
   const P = bp.persons;
   const [a, b] = [P.h, P.w];
+  const single = !!hh.single;
+  const people: Spouse[] = single ? ['h'] : SPOUSES;
   const nm = (s: Spouse) => P[s].name;
-  const cols = (f: (p: PersonGuide) => React.ReactNode) => SPOUSES.map((s) => <td key={s}>{f(P[s])}</td>);
+  const cols = (f: (p: PersonGuide) => React.ReactNode) => people.map((s) => <td key={s}>{f(P[s])}</td>);
+  const both2 = (f: (p: PersonGuide) => string, sep = ' / ') => people.map((s) => f(P[s])).join(sep);
 
   return (
     <div className="start">
@@ -39,14 +42,14 @@ export function StartGuide({ hh }: { hh: HouseholdInput }) {
             <tr>
               <th />
               <th>{a.name}</th>
-              <th>{b.name}</th>
+              {!single && <th>{b.name}</th>}
             </tr>
           </thead>
           <tbody>
             <tr><td>총급여</td>{cols((p) => man(p.salary))}</tr>
             <tr><td>한계세율 (지방세 포함)</td>{cols((p) => pr(p.marginal))}</tr>
             <tr className="key"><td>카드 공제 <b>문턱</b> (총급여 25%)</td>{cols((p) => man(p.thr))}</tr>
-            <tr><td>기본한도 <small>(자녀 {a.kids}·{b.kids}명 반영)</small></td>{cols((p) => man(p.baseLimit))}</tr>
+            <tr><td>기본한도 <small>(자녀 {single ? a.kids : `${a.kids}·${b.kids}`}명 반영)</small></td>{cols((p) => man(p.baseLimit))}</tr>
             <tr><td>추가한도 (전통시장·대중교통{a.cultureOk || b.cultureOk ? '·문화' : ''})</td>{cols((p) => man(p.extraLimit))}</tr>
             <tr className="key"><td>한도 채우는 총지출 (체크·현금 기준)</td>{cols((p) => `약 ${man0(p.fullDebit)}`)}</tr>
             <tr><td>한도 채우는 총지출 (신용카드만)</td>{cols((p) => `약 ${man0(p.fullCredit)}`)}</tr>
@@ -63,7 +66,7 @@ export function StartGuide({ hh }: { hh: HouseholdInput }) {
             <tr>
               <th>결제수단 (공제율)</th>
               <th>{a.name}</th>
-              <th>{b.name}</th>
+              {!single && <th>{b.name}</th>}
             </tr>
           </thead>
           <tbody>
@@ -78,19 +81,19 @@ export function StartGuide({ hh }: { hh: HouseholdInput }) {
           <b>문턱 아래는 공제가 0원</b>이고 최저사용금액은 신용카드 사용분부터 차감됩니다. 이 구간은 공제와 무관하니 <b>적립·할인 혜택이 가장 큰 신용카드</b>를 쓰세요.
         </li>
         <li>
-          문턱을 넘으면 체크·현금이 신용보다 {pr(0.15 * a.marginal)}p({a.name}) / {pr(0.15 * b.marginal)}p({b.name}) 더 돌려줍니다. <b>신용카드 혜택률이 이만큼 더 높지 않다면 체크카드·현금영수증이 유리</b>합니다. 보통 신용카드 혜택은 1~2%대입니다.
+          문턱을 넘으면 체크·현금이 신용보다 {both2((p) => `${pr(0.15 * p.marginal)}p${single ? '' : `(${p.name})`}`)} 더 돌려줍니다. <b>신용카드 혜택률이 이만큼 더 높지 않다면 체크카드·현금영수증이 유리</b>합니다. 보통 신용카드 혜택은 1~2%대입니다.
         </li>
         <li>
-          <b>전통시장·대중교통</b>은 항상 최우선(40%)입니다. 기본한도를 채운 뒤에도 추가한도({man(a.extraLimit)} / {man(b.extraLimit)})까지 공제되며, 이를 채우려면 이 두 항목에 약 {man0(a.extraFill)} / {man0(b.extraFill)}를 써야 합니다. 대중교통 40% 우대는 2026년 세제개편안에서 폐지가 거론되니 확정 여부를 확인하세요.
+          <b>전통시장·대중교통</b>은 항상 최우선(40%)입니다. 기본한도를 채운 뒤에도 추가한도({both2((p) => man(p.extraLimit))})까지 공제되며, 이를 채우려면 이 두 항목에 약 {both2((p) => man0(p.extraFill))}를 써야 합니다. 대중교통 40% 우대는 2026년 세제개편안에서 폐지가 거론되니 확정 여부를 확인하세요.
         </li>
         <li>
           <b>한도를 다 채운 뒤</b>의 일반 소비는 더 써도 공제가 늘지 않으므로, 다시 혜택이 큰 신용카드로 쓰면 됩니다.
         </li>
-        <li>가족 카드·배우자 카드: 소득 있는 배우자의 카드 사용분은 서로 공제받을 수 없으니, 몰아줄 사람 <b>본인 명의 카드로 직접 결제</b>하세요.</li>
+        {!single && <li>가족 카드·배우자 카드: 소득 있는 배우자의 카드 사용분은 서로 공제받을 수 없으니, 몰아줄 사람 <b>본인 명의 카드로 직접 결제</b>하세요.</li>}
       </ul>
 
-      <h3>카드 지출, 누구에게 얼마나 몰까</h3>
-      {bp.breakevenText ? (
+      {!single && <h3>카드 지출, 누구에게 얼마나 몰까</h3>}
+      {single ? null : bp.breakevenText ? (
         <div className="breakeven">
           <p className="headline">{bp.breakevenText.headline}</p>
           <ul>
@@ -102,12 +105,12 @@ export function StartGuide({ hh }: { hh: HouseholdInput }) {
       ) : (
         <p className="muted">부부 모두 총급여를 입력하면 몰아주는 기준 금액을 보여드립니다.</p>
       )}
-      <div className="steps-card">
-        {SPOUSES.map((s) => {
+      <div className={single ? 'steps-card one' : 'steps-card'}>
+        {people.map((s) => {
           const p = P[s];
           return (
             <ol key={s}>
-              <li className="steps-title">{p.name}가 쓴다면 이 순서로</li>
+              <li className="steps-title">{single ? '카드는 이 순서로 쓰세요' : `${p.name}가 쓴다면 이 순서로`}</li>
               <li><b>① 신용카드 {man(p.thr)}까지</b> — 공제 문턱 구간 (혜택 위주)</li>
               <li><b>② 체크·현금영수증 {man0(p.baseLimit / 0.3)}</b> — 기본한도 {man(p.baseLimit)} 채우기 ({won(p.maxSaveBase)} 절세)</li>
               <li><b>③ 전통시장·대중교통 {man0(p.extraFill)}</b> — 추가한도 {man(p.extraLimit)} 채우기 ({won(p.maxSaveExtra)} 절세)</li>
@@ -124,7 +127,7 @@ export function StartGuide({ hh }: { hh: HouseholdInput }) {
             <tr>
               <th>항목</th>
               <th>{a.name}</th>
-              <th>{b.name}</th>
+              {!single && <th>{b.name}</th>}
             </tr>
           </thead>
           <tbody>
@@ -162,13 +165,13 @@ export function StartGuide({ hh }: { hh: HouseholdInput }) {
         <li>
           자녀 교육비는 1인당 초·중·고 연 300만원, 대학 900만원 한도에 15% 공제입니다 (학원비는 취학 전 아동만). 공제받는 부모 명의로 결제하세요.
         </li>
-        {bp.deps.length > 0 && (
+        {!single && bp.deps.length > 0 && (
           <li>
             <b>부양가족 배정 추천</b>: {bp.deps.map((d) => `${d.name} → ${nm(d.to)}${d.to !== d.from ? ' (현재와 다름)' : ''}`).join(', ')}.
             인적공제는 한계세율이 높은 쪽이 유리하고, 자녀를 올린 사람의 카드 한도가 늘어납니다.
           </li>
         )}
-        {(hh.housing.rent > 0 || hh.housing.leaseLoanRepay > 0 || hh.husband.housingSubscription + hh.wife.housingSubscription > 0) && (
+        {!single && (hh.housing.rent > 0 || hh.housing.leaseLoanRepay > 0 || hh.husband.housingSubscription + hh.wife.housingSubscription > 0) && (
           <li>주택 관련 공제는 <b>{nm(bp.head)}</b>이(가) 세대주일 때 유리합니다.</li>
         )}
       </ul>
