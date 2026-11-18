@@ -9,7 +9,7 @@ export interface CardSpend {
 }
 
 export type EducationType = 'none' | 'preschool' | 'school' | 'university' | 'disabledSpecial';
-export type Relation = 'child' | 'parent' | 'other';
+export type Relation = 'child' | 'parent' | 'other' | 'spouse';
 
 export interface DonationInput {
   general: number; // 특례·일반 기부금 (종교 포함 단순화)
@@ -74,6 +74,8 @@ export interface HouseholdInput {
   dependents: DependentInput[];
   housing: HousingInput;
   flex: FlexOptions;
+  /** 싱글(배우자 없음)이면 true — 두 번째 사람 계산·추천을 건너뛴다 */
+  single?: boolean;
 }
 
 /** 한 사람의 세액을 계산하기 위한, 배분이 끝난 입력 */

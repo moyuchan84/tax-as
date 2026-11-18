@@ -40,9 +40,17 @@ export function buildStrategy(hh: HouseholdInput, opt: OptimizeResult): Tip[] {
   const nH = NAME(hh, 'h');
   const nW = NAME(hh, 'w');
   const R = bestResult;
+  const single = !!hh.single;
+  const whos: Spouse[] = single ? ['h'] : ['h', 'w'];
 
-  // 0. 부부의 세율 위치
-  tips.push({
+  // 0. 세율 위치
+  if (single) {
+    tips.push({
+      level: 'info',
+      title: `한계세율 ${pct(R.h.marginalRate)} (지방세 포함 ${pct(R.h.marginalRate * 1.1)})`,
+      detail: `과세표준 ${man(R.h.taxBase)}. 소득공제 1만원은 한계세율만큼 세금을 줄이고, 세액공제는 세율과 관계없이 공제액만큼 줄입니다.`,
+    });
+  } else tips.push({
     level: 'info',
     title: '부부 한계세율 비교',
     detail:
@@ -52,7 +60,7 @@ export function buildStrategy(hh: HouseholdInput, opt: OptimizeResult): Tip[] {
   });
 
   // 1. 부양가족 배정
-  hh.dependents.forEach((d, i) => {
+  if (!single) hh.dependents.forEach((d, i) => {
     const to = best.deps[i];
     const from = opt.baseline.deps[i];
     const label = d.name || `부양가족 ${i + 1}`;
@@ -74,7 +82,7 @@ export function buildStrategy(hh: HouseholdInput, opt: OptimizeResult): Tip[] {
   });
 
   // 2. 세대주
-  if (hh.housing.rent > 0 || hh.housing.leaseLoanRepay > 0 || hh.husband.housingSubscription + hh.wife.housingSubscription > 0) {
+  if (!single && hh.housing.rent > 0 || hh.housing.leaseLoanRepay > 0 || hh.husband.housingSubscription + hh.wife.housingSubscription > 0) {
     const s = best.head !== opt.baseline.head ? partialSaving(hh, opt, (a) => (a.head = best.head)) : 0;
     tips.push({
       level: s > 0 ? 'action' : 'info',
@@ -88,12 +96,12 @@ export function buildStrategy(hh: HouseholdInput, opt: OptimizeResult): Tip[] {
   }
 
   // 3. 카드
-  if (hh.flex.cards && CARD_KEYS.some((k) => totals[k] > 0)) {
+  if ((hh.flex.cards || single) && CARD_KEYS.some((k) => totals[k] > 0)) {
     const s = partialSaving(hh, opt, (a) => CARD_KEYS.forEach((k) => (a.h[k] = best.h[k])));
     const hCard = CARD_KEYS.reduce((t, k) => t + best.h[k], 0);
     const wCard = CARD_KEYS.reduce((t, k) => t + totals[k] - best.h[k], 0);
     const line = (k: PooledKey) => `${labelOf(k)} ${nH} ${man(best.h[k])} / ${nW} ${man(totals[k] - best.h[k])}`;
-    tips.push({
+    if (!single) tips.push({
       level: s > 0 ? 'action' : 'info',
       title: `카드 사용 배분: ${nH} ${man(hCard)} · ${nW} ${man(wCard)}`,
       detail:
@@ -103,7 +111,7 @@ export function buildStrategy(hh: HouseholdInput, opt: OptimizeResult): Tip[] {
         `권장 배분 → ${CARD_KEYS.filter((k) => totals[k] > 0).map(line).join(', ')}.`,
       saving: s || undefined,
     });
-    for (const who of ['h', 'w'] as Spouse[]) {
+    for (const who of whos) {
       const c = R[who].card;
       const cap = c.baseLimit + c.extraLimit;
       let detail: string;
@@ -119,7 +127,7 @@ export function buildStrategy(hh: HouseholdInput, opt: OptimizeResult): Tip[] {
   }
 
   // 3-1. 카드: 고소득자 vs 저소득자, 누구에게 몰아야 하나
-  if (CARD_KEYS.some((k) => totals[k] > 0)) {
+  if (!single && CARD_KEYS.some((k) => totals[k] > 0)) {
     const be = cardBreakeven(R);
     if (be) {
       const cur = CARD_KEYS.reduce((t, k) => t + totals[k], 0);
@@ -139,7 +147,7 @@ export function buildStrategy(hh: HouseholdInput, opt: OptimizeResult): Tip[] {
   }
 
   // 4. 의료비
-  if (hh.flex.medical && MED_KEYS.some((k) => totals[k] > 0)) {
+  if (!single && hh.flex.medical && MED_KEYS.some((k) => totals[k] > 0)) {
     const s = partialSaving(hh, opt, (a) => MED_KEYS.forEach((k) => (a.h[k] = best.h[k])));
     tips.push({
       level: s > 0 ? 'action' : 'info',
@@ -154,7 +162,7 @@ export function buildStrategy(hh: HouseholdInput, opt: OptimizeResult): Tip[] {
   }
 
   // 5. 기부금
-  if (hh.flex.donations && DON_KEYS.some((k) => totals[k] > 0)) {
+  if (!single && hh.flex.donations && DON_KEYS.some((k) => totals[k] > 0)) {
     const s = partialSaving(hh, opt, (a) => DON_KEYS.forEach((k) => (a.h[k] = best.h[k])));
     tips.push({
       level: s > 0 ? 'action' : 'info',
@@ -168,7 +176,7 @@ export function buildStrategy(hh: HouseholdInput, opt: OptimizeResult): Tip[] {
   }
 
   // 6. 소멸되는 세액공제
-  for (const who of ['h', 'w'] as Spouse[]) {
+  for (const who of whos) {
     const r = R[who];
     if (r.lostCredits > 0) {
       tips.push({
@@ -181,7 +189,7 @@ export function buildStrategy(hh: HouseholdInput, opt: OptimizeResult): Tip[] {
 
   // 7. 연금저축·IRP 추가 납입 여력
   const inputs = buildPersonInputs(hh, best);
-  for (const who of ['h', 'w'] as Spouse[]) {
+  for (const who of whos) {
     const p = inputs[who];
     const cap = RULES.pension;
     const room = Math.max(0, cap.totalCap - Math.min(p.pensionSavings, cap.savingsCap) - p.irp);

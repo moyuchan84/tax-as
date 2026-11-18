@@ -47,8 +47,9 @@ export function estimateSocial(salary: number) {
 
 // ---------------------------------------------------------------- 인적공제
 
-export function isBasicEligible(d: ResolvedDependent): boolean {
+export function isBasicEligible(d: Pick<ResolvedDependent, 'relation' | 'age' | 'disabled'>): boolean {
   const p = R.personal;
+  if (d.relation === 'spouse') return true; // 소득요건은 호출하는 쪽에서 확인
   if (d.disabled) return true;
   if (d.relation === 'child') return d.age <= p.childMaxAge;
   if (d.relation === 'parent') return d.age >= p.parentMinAge;

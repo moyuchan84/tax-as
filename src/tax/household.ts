@@ -1,4 +1,5 @@
 import { computePersonTax, estimateSocial, type TaxResult } from './engine';
+import { RULES } from './rules';
 import type { HouseholdInput, PersonProfile, PersonTaxInput, ResolvedDependent, Spouse } from './types';
 
 /**
@@ -119,13 +120,19 @@ export function buildPersonInputs(hh: HouseholdInput, a: Allocation, totals = po
     const other = who === 'h' ? hh.wife : hh.husband;
     const share = (k: PooledKey) => (who === 'h' ? a.h[k] : totals[k] - a.h[k]);
     const isHead = a.head === who;
+    // 외벌이: 배우자 소득이 요건 이하이면 소득이 더 높은 쪽이 배우자 기본공제를 받는다
+    const claimsSpouse =
+      !hh.single && other.salary <= RULES.personal.spouseWageLimit && (p.salary > other.salary || (p.salary === other.salary && who === 'h'));
+    const spouseDep: ResolvedDependent[] = claimsSpouse
+      ? [{ name: other.name || '배우자', relation: 'spouse', age: other.age, disabled: other.disabled, educationType: 'none', education: 0, medical: 0, birthOrder: 0 }]
+      : [];
     return {
       salary: p.salary,
       age: p.age,
       disabled: p.disabled,
       female: who === 'w',
       social: socialOf(p),
-      dependents: resolved.filter((_, i) => a.deps[i] === who),
+      dependents: [...resolved.filter((_, i) => a.deps[i] === who), ...spouseDep],
       cards: {
         credit: share('credit'),
         debitCash: share('debitCash'),

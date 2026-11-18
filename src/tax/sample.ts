@@ -75,3 +75,17 @@ export function sampleHousehold(): HouseholdInput {
     flex: { cards: true, medical: true, donations: true },
   };
 }
+
+/** 싱글 예시: 총급여 6,000만원 직장인 */
+export function sampleSingle(): HouseholdInput {
+  const s = sampleHousehold();
+  return {
+    ...s,
+    husband: { ...s.husband, name: '본인', salary: 6000 * M, age: 34, medical: 40 * M, insurance: 60 * M, cards: { credit: 1200 * M, debitCash: 500 * M, market: 20 * M, transport: 40 * M, culture: 20 * M }, donations: { general: 0, political: 0, hometown: 10 * M }, pensionSavings: 200 * M },
+    wife: emptyPerson('배우자'),
+    dependents: [],
+    housing: { head: 'h', headLocked: true, rent: 0, leaseLoanRepay: 0 },
+    flex: { cards: false, medical: false, donations: false },
+    single: true,
+  };
+}

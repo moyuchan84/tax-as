@@ -252,3 +252,47 @@ table.basic tr.key td { background: var(--accent-soft); font-weight: 600; }
 .steps-card ol { list-style: none; margin: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
 .steps-card .steps-title { font-weight: 700; color: var(--accent); }
 .guide-empty { padding: 8px 0; color: var(--muted); }
+
+/* ---------- 싱글 ---------- */
+.pair-row.single { grid-template-columns: minmax(110px, 1fr) minmax(0, 2fr); }
+.steps-card.one { grid-template-columns: 1fr; }
+
+/* ---------- 시작 페이지 ---------- */
+.start-page { max-width: 860px; margin: 0 auto; padding: 24px 16px 40px; }
+.sp-head h1 { margin: 0 0 6px; font-size: 26px; }
+.sp-head p { margin: 0 0 18px; color: var(--muted); }
+.sp-step { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; margin-bottom: 12px; }
+.sp-step h2 { margin: 0 0 10px; font-size: 16px; }
+.sp-step h2 small { font-weight: 400; color: var(--muted); margin-left: 6px; }
+.sp-kind { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.sp-card { display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 12px 14px; border-radius: 12px; }
+.sp-card small { color: var(--muted); }
+.sp-card.on { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 1px var(--accent) inset; }
+.sp-persons { display: grid; gap: 10px; }
+.sp-persons.two { grid-template-columns: 1fr 1fr; }
+@media (max-width: 640px) { .sp-kind, .sp-persons.two { grid-template-columns: 1fr; } }
+.sp-person { border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px 12px; margin: 0; min-width: 0; }
+.sp-person legend { font-weight: 700; padding: 0 6px; }
+.sp-opt { display: flex; gap: 8px; align-items: flex-start; padding: 8px; border-radius: 8px; cursor: pointer; }
+.sp-opt.on { background: var(--accent-soft); }
+.sp-opt span { display: flex; flex-direction: column; }
+.sp-opt small { color: var(--muted); }
+.sp-opt input { margin-top: 4px; }
+.sp-note { font-size: 12px; margin: 6px 0 0; }
+.sp-kids { display: flex; gap: 14px; align-items: center; }
+.sp-kids button { width: 36px; height: 36px; padding: 0; border-radius: 50%; font-size: 18px; }
+.sp-result { display: flex; flex-wrap: wrap; gap: 14px; justify-content: space-between; align-items: center; background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 14px; padding: 14px 16px; }
+.sp-mode { margin-top: 4px; font-weight: 700; }
+.sp-mode.wage { color: var(--accent); }
+.sp-mode.comp { color: var(--good); }
+.sp-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.sp-foot { font-size: 12px; margin: 14px 0 4px; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+button.primary:disabled { opacity: 0.45; }
+
+/* ---------- 종합소득세 ---------- */
+.tags { display: block; color: var(--muted); font-size: 11px; margin-top: 2px; }
+.hero-note { margin-top: 8px; font-size: 13px; color: var(--muted); }
+.callout { padding: 10px 12px; border-radius: 8px; background: var(--accent-soft); margin: 10px 0; }
+.callout.good { background: var(--good-soft); color: var(--good); }
+select { max-width: 100%; }
