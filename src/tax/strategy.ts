@@ -19,6 +19,7 @@ export interface Tip {
   title: string;
   detail: string;
   saving?: number; // 이 조정 하나만 했을 때 절세액
+  kind?: 'extra'; // 추가 지출·납입이 필요한 제안 (재배분만으로 얻는 절세와 구분)
   level: 'action' | 'info' | 'warn';
 }
 
@@ -170,6 +171,7 @@ export function buildStrategy(hh: HouseholdInput, opt: OptimizeResult): Tip[] {
       const rate = p.salary <= cap.salaryThreshold ? cap.highRate : cap.lowRate;
       tips.push({
         level: 'action',
+        kind: 'extra',
         title: `${NAME(hh, who)}: 연금저축·IRP ${man(room)} 추가 납입 시 ${won(gain)} 절세`,
         detail: `연금계좌는 합산 연 ${man(cap.totalCap)}(연금저축 ${man(cap.savingsCap)} 이내)까지 ${pct(rate * 1.1)}(지방세 포함) 세액공제됩니다. 12월 31일까지 납입분이 대상입니다. 결정세액이 0이 되면 그 이상은 효과가 없으니, 세금이 남는 사람에게 먼저 넣으세요.`,
         saving: gain,

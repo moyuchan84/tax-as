@@ -1,14 +1,23 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import type { TaxResult } from '../tax/engine';
 import { man, pct, won } from '../tax/format';
 import { POOLED_KEYS, POOLED_LABEL, pooledTotals, type Allocation } from '../tax/household';
-import { cardShareCurve, type OptimizeResult } from '../tax/optimizer';
+import type { OptimizeResult } from '../tax/optimizer';
 import type { Tip } from '../tax/strategy';
 import type { HouseholdInput, Spouse } from '../tax/types';
+import { PlanPanel } from './PlanPanel';
 
-type Props = { hh: HouseholdInput; opt: OptimizeResult; tips: Tip[] };
+export type Tab = 'plan' | 'alloc' | 'tips' | 'detail';
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'plan', label: '지출 플랜' },
+  { id: 'alloc', label: '추천 배분' },
+  { id: 'tips', label: '전략 가이드' },
+  { id: 'detail', label: '상세 계산' },
+];
 
-export function ResultPanel({ hh, opt, tips }: Props) {
+type Props = { hh: HouseholdInput; opt: OptimizeResult; tips: Tip[]; tab: Tab; onTab: (t: Tab) => void };
+
+export function ResultPanel({ hh, opt, tips, tab, onTab }: Props) {
   const [view, setView] = useState<'best' | 'baseline'>('best');
   const nH = hh.husband.name || '남편';
   const nW = hh.wife.name || '아내';
@@ -17,91 +26,96 @@ export function ResultPanel({ hh, opt, tips }: Props) {
 
   return (
     <div className="results">
-      <div className="summary">
-        <div>
-          <div className="label">현재 방식 부부 합산 세금</div>
-          <div className="num">{won(b.total)}</div>
-        </div>
-        <div className="arrow">→</div>
-        <div>
-          <div className="label">최적 배분 시</div>
-          <div className="num">{won(r.total)}</div>
-        </div>
-        <div className="saving">
-          <div className="label">절세 효과</div>
-          <div className="num big">{opt.savings > 0 ? won(opt.savings) : '이미 최적'}</div>
-        </div>
+      <div className="tabs" role="tablist">
+        {TABS.map((t) => (
+          <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'tab on' : 'tab'} onClick={() => onTab(t.id)}>
+            {t.label}
+          </button>
+        ))}
       </div>
 
-      <table className="mini">
-        <thead>
-          <tr>
-            <th />
-            <th>{nH} 현재</th>
-            <th>{nH} 최적</th>
-            <th>{nW} 현재</th>
-            <th>{nW} 최적</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>결정세액(소득세)</td>
-            <td>{won(b.h.determinedTax)}</td>
-            <td>{won(r.h.determinedTax)}</td>
-            <td>{won(b.w.determinedTax)}</td>
-            <td>{won(r.w.determinedTax)}</td>
-          </tr>
-          <tr>
-            <td>+ 지방소득세</td>
-            <td>{won(b.h.totalTax)}</td>
-            <td>{won(r.h.totalTax)}</td>
-            <td>{won(b.w.totalTax)}</td>
-            <td>{won(r.w.totalTax)}</td>
-          </tr>
-          {(r.h.refund !== null || r.w.refund !== null) && (
-            <tr>
-              <td>예상 환급(+)/납부(−)</td>
-              <td>{b.h.refund !== null ? won(b.h.refund * 1.1) : '-'}</td>
-              <td>{r.h.refund !== null ? won(r.h.refund * 1.1) : '-'}</td>
-              <td>{b.w.refund !== null ? won(b.w.refund * 1.1) : '-'}</td>
-              <td>{r.w.refund !== null ? won(r.w.refund * 1.1) : '-'}</td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+      {tab === 'plan' && <PlanPanel hh={hh} opt={opt} />}
 
-      <h3>추천 배분</h3>
-      <AllocationTable hh={hh} opt={opt} />
+      {tab === 'alloc' && (
+        <div>
+          <h3>부부별 세금</h3>
+          <div className="table-scroll">
+            <table className="mini">
+              <thead>
+                <tr>
+                  <th />
+                  <th>{nH} 현재</th>
+                  <th>{nH} 최적</th>
+                  <th>{nW} 현재</th>
+                  <th>{nW} 최적</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>결정세액(소득세)</td>
+                  <td>{won(b.h.determinedTax)}</td>
+                  <td>{won(r.h.determinedTax)}</td>
+                  <td>{won(b.w.determinedTax)}</td>
+                  <td>{won(r.w.determinedTax)}</td>
+                </tr>
+                <tr>
+                  <td>+ 지방소득세</td>
+                  <td>{won(b.h.totalTax)}</td>
+                  <td>{won(r.h.totalTax)}</td>
+                  <td>{won(b.w.totalTax)}</td>
+                  <td>{won(r.w.totalTax)}</td>
+                </tr>
+                {(r.h.refund !== null || r.w.refund !== null) && (
+                  <tr className="sum">
+                    <td>예상 환급(+) / 추가납부(−)</td>
+                    <td>{b.h.refund !== null ? won(b.h.refund * 1.1) : '-'}</td>
+                    <td>{r.h.refund !== null ? won(r.h.refund * 1.1) : '-'}</td>
+                    <td>{b.w.refund !== null ? won(b.w.refund * 1.1) : '-'}</td>
+                    <td>{r.w.refund !== null ? won(r.w.refund * 1.1) : '-'}</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <h3>추천 배분표</h3>
+          <AllocationTable hh={hh} opt={opt} />
+        </div>
+      )}
 
-      <h3>전략 가이드</h3>
-      <ul className="tips">
-        {tips.map((t, i) => (
-          <li key={i} className={t.level}>
-            <div className="tip-title">
-              <span>{t.title}</span>
-              {t.saving ? <b>{won(t.saving)} ↓</b> : null}
-            </div>
-            <p>{t.detail}</p>
-          </li>
-        ))}
-      </ul>
+      {tab === 'tips' && (
+        <div>
+          <h3>전략 가이드</h3>
+          <p className="muted">각 절세액은 그 항목 하나만 바꿨을 때의 값이라 합계가 전체 절세액과 다를 수 있습니다.</p>
+          <ul className="tips">
+            {tips.map((t, i) => (
+              <li key={i} className={t.level}>
+                <div className="tip-title">
+                  <span>{t.title}</span>
+                  {t.saving ? <b>{won(t.saving)} ↓</b> : null}
+                </div>
+                <p>{t.detail}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
-      <h3>카드 사용 배분 시뮬레이션</h3>
-      <p className="muted">카드 사용액 전체 중 {nH} 명의 비중을 바꿀 때 부부 합산 세금 (다른 항목은 최적 배분 고정)</p>
-      <CardChart hh={hh} best={opt.best} nH={nH} nW={nW} />
-
-      <h3>
-        상세 계산
-        <span className="toggle">
-          <button className={view === 'best' ? 'on' : ''} onClick={() => setView('best')}>
-            최적
-          </button>
-          <button className={view === 'baseline' ? 'on' : ''} onClick={() => setView('baseline')}>
-            현재
-          </button>
-        </span>
-      </h3>
-      <Breakdown h={(view === 'best' ? r : b).h} w={(view === 'best' ? r : b).w} nH={nH} nW={nW} />
+      {tab === 'detail' && (
+        <div>
+          <h3>
+            상세 계산
+            <span className="toggle">
+              <button className={view === 'best' ? 'on' : ''} onClick={() => setView('best')}>
+                최적
+              </button>
+              <button className={view === 'baseline' ? 'on' : ''} onClick={() => setView('baseline')}>
+                현재
+              </button>
+            </span>
+          </h3>
+          <Breakdown h={(view === 'best' ? r : b).h} w={(view === 'best' ? r : b).w} nH={nH} nW={nW} />
+        </div>
+      )}
     </div>
   );
 }
@@ -150,83 +164,6 @@ function AllocationTable({ hh, opt }: { hh: HouseholdInput; opt: OptimizeResult 
         ))}
       </tbody>
     </table>
-  );
-}
-
-function CardChart({ hh, best, nH, nW }: { hh: HouseholdInput; best: Allocation; nH: string; nW: string }) {
-  const pts = useMemo(() => cardShareCurve(hh, best), [hh, best]);
-  const [hover, setHover] = useState<number | null>(null);
-  const totals = pooledTotals(hh);
-  const cardTotal = totals.credit + totals.debitCash + totals.market + totals.transport + totals.culture;
-  if (cardTotal <= 0) return <p className="muted">카드 사용액을 입력하면 그래프가 표시됩니다.</p>;
-
-  const W = 560;
-  const H = 220;
-  const pad = { l: 64, r: 12, t: 12, b: 32 };
-  const ys = pts.flatMap((p) => [p.total, p.h, p.w]);
-  const yMin = Math.min(...ys);
-  const yMax = Math.max(...ys);
-  const span = yMax - yMin || 1;
-  const x = (s: number) => pad.l + s * (W - pad.l - pad.r);
-  const y = (v: number) => pad.t + (1 - (v - yMin) / span) * (H - pad.t - pad.b);
-  const path = (f: (p: (typeof pts)[number]) => number) => pts.map((p, i) => `${i ? 'L' : 'M'}${x(p.share).toFixed(1)},${y(f(p)).toFixed(1)}`).join('');
-  const minPt = pts.reduce((m, p) => (p.total < m.total ? p : m), pts[0]);
-  const hp = hover !== null ? pts[hover] : null;
-  const ticks = [yMin, yMin + span / 2, yMax];
-
-  return (
-    <div className="chart">
-      <svg
-        viewBox={`0 0 ${W} ${H}`}
-        role="img"
-        aria-label="카드 배분 비중별 세금"
-        onMouseLeave={() => setHover(null)}
-        onMouseMove={(e) => {
-          const rect = (e.currentTarget as SVGSVGElement).getBoundingClientRect();
-          const sx = ((e.clientX - rect.left) / rect.width) * W;
-          const s = Math.min(1, Math.max(0, (sx - pad.l) / (W - pad.l - pad.r)));
-          setHover(Math.round(s * (pts.length - 1)));
-        }}
-      >
-        {ticks.map((t) => (
-          <g key={t}>
-            <line x1={pad.l} x2={W - pad.r} y1={y(t)} y2={y(t)} className="grid" />
-            <text x={pad.l - 6} y={y(t) + 4} textAnchor="end" className="axis">
-              {man(t)}
-            </text>
-          </g>
-        ))}
-        {[0, 0.25, 0.5, 0.75, 1].map((s) => (
-          <text key={s} x={x(s)} y={H - 10} textAnchor="middle" className="axis">
-            {Math.round(s * 100)}%
-          </text>
-        ))}
-        <path d={path((p) => p.h)} className="line s1" />
-        <path d={path((p) => p.w)} className="line s2" />
-        <path d={path((p) => p.total)} className="line total" />
-        <circle cx={x(minPt.share)} cy={y(minPt.total)} r={5} className="dot" />
-        {hp && (
-          <g>
-            <line x1={x(hp.share)} x2={x(hp.share)} y1={pad.t} y2={H - pad.b} className="cursor" />
-            <circle cx={x(hp.share)} cy={y(hp.total)} r={4} className="dot" />
-          </g>
-        )}
-      </svg>
-      <div className="legend">
-        <span className="k total">부부 합산</span>
-        <span className="k s1">{nH}</span>
-        <span className="k s2">{nW}</span>
-        {hp ? (
-          <span className="readout">
-            {nH} {Math.round(hp.share * 100)}% ({man(cardTotal * hp.share)}) · 합산 {won(hp.total)}
-          </span>
-        ) : (
-          <span className="readout">
-            최저점: {nH} {Math.round(minPt.share * 100)}% · {won(minPt.total)}
-          </span>
-        )}
-      </div>
-    </div>
   );
 }
 
