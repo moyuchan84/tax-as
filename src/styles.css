@@ -241,3 +241,14 @@ footer p { margin: 0 0 6px; }
 .breakeven .headline { margin: 0 0 6px; font-weight: 600; }
 .breakeven ul { margin: 0; padding-left: 18px; font-size: 13px; color: var(--muted); }
 .breakeven li { margin-bottom: 4px; }
+
+.start h3 small { font-weight: 400; margin-left: 6px; }
+table.basic td, table.basic th { white-space: normal; text-align: right; }
+table.basic td:first-child, table.basic th:first-child { text-align: left; }
+table.basic td small { display: block; color: var(--muted); font-size: 11px; font-weight: 400; }
+table.basic tr.key td { background: var(--accent-soft); font-weight: 600; }
+.steps-card { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
+@media (max-width: 640px) { .steps-card { grid-template-columns: 1fr; } }
+.steps-card ol { list-style: none; margin: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.steps-card .steps-title { font-weight: 700; color: var(--accent); }
+.guide-empty { padding: 8px 0; color: var(--muted); }

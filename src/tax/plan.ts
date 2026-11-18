@@ -1,5 +1,5 @@
 import { computePersonTax, type TaxResult } from './engine';
-import { man, pct } from './format';
+import { man, man0, pct } from './format';
 import {
   CARD_KEYS,
   baselineAllocation,
@@ -319,24 +319,29 @@ export function cardBreakeven(res: { h: TaxResult; w: TaxResult }): Breakeven | 
 export function breakevenLines(b: Breakeven, name: Record<Spouse, string>, currentTotal: number): { headline: string; lines: string[] } {
   const { hi, lo } = b;
   const own = (s: Spouse) =>
-    `${name[s]}(한계세율 ${pct(b.rate[s])}): 문턱 ${man(b.thr[s])}, 한도를 채우는 총지출 약 ${man(b.full[s])}, 한도를 채우면 최대 ${man(b.maxSave[s])} 절세`;
+    `${name[s]}(한계세율 ${pct(b.rate[s])}): 문턱 ${man(b.thr[s])}, 한도를 채우는 총지출 약 ${man0(b.full[s])}, 한도를 채우면 최대 ${man(b.maxSave[s])} 절세`;
+  const limit = (s: Spouse) => b.maxSave[s] / b.rate[s];
+  const rateHigher = b.rate[hi] > b.rate[lo] + 1e-9;
+  const limitHigher = limit(hi) > limit(lo) + 1;
+  const why = rateHigher && limitHigher ? '세율이 높고 한도도 큰' : rateHigher ? '세율이 높은' : limitHigher ? '공제 한도가 더 큰(자녀 수 반영)' : '';
   const lines: string[] = [`고소득 쪽 → ${own(hi)}`, `저소득 쪽 → ${own(lo)}`];
 
   if (b.tHiFirst === null) {
-    lines.push(`세율 차이보다 문턱 차이가 커서, 합산 지출이 어느 규모든 문턱이 낮은 ${name[lo]}에게 먼저 쓰는 편이 유리합니다.`);
+    lines.push(`세율·한도 차이보다 문턱 차이가 커서, 합산 지출이 어느 규모든 문턱이 낮은 ${name[lo]}에게 먼저 쓰는 편이 유리합니다.`);
   } else {
-    lines.push(`합산 지출 ${man(b.tHiFirst)} 미만: 문턱이 낮은 ${name[lo]} 한 명에게 — 고소득자는 문턱을 못 넘겨 공제가 거의 없습니다.`);
+    lines.push(`합산 지출 ${man0(b.tHiFirst)} 미만: 문턱이 낮은 ${name[lo]} 한 명에게 — 고소득자는 문턱을 못 넘겨 공제가 거의 없습니다.`);
     lines.push(
-      `합산 지출 ${man(b.tHiFirst)} ~ ${man(b.tSplit ?? b.tBoth)}: 세율이 높은 ${name[hi]}에게 몰아 한도(약 ${man(b.full[hi])})까지 — 같은 공제도 절세액이 더 큽니다.`,
+      `합산 지출 ${man0(b.tHiFirst)} ~ ${man0(b.tSplit ?? b.tBoth)}: ${why ? why + ' ' : ''}${name[hi]}에게 몰아 한도(약 ${man0(b.full[hi])})까지 — 절세액이 더 큽니다.`,
     );
   }
-  if (b.tSplit !== null) lines.push(`합산 지출 ${man(b.tSplit)} 이상: 한 명이 한도를 채우고 남는 지출은 다른 배우자 카드로 — 둘 다 문턱을 넘기 시작합니다.`);
-  lines.push(`합산 지출 ${man(b.tBoth)} 이상: 두 사람 모두 한도라서 더 써도 공제가 늘지 않습니다.`);
+  if (b.tSplit !== null) lines.push(`합산 지출 ${man0(b.tSplit)} 이상: 한 명이 한도를 채우고 남는 지출은 다른 배우자 카드로 — 둘 다 문턱을 넘기 시작합니다.`);
+  lines.push(`합산 지출 ${man0(b.tBoth)} 이상: 두 사람 모두 한도라서 더 써도 공제가 늘지 않습니다.`);
 
   let now: string;
   if (b.tHiFirst === null || currentTotal < b.tHiFirst) now = `${name[lo]} 한 명에게 몰기`;
   else if (b.tSplit === null || currentTotal < b.tSplit) now = `${name[hi]}에게 몰아 한도 채우기`;
   else if (currentTotal < b.tBoth) now = `한 명이 한도를 채우고 나머지는 다른 배우자에게`;
   else now = '두 사람 모두 한도를 채운 상태 (추가 지출은 공제 효과 없음)';
-  return { headline: `현재 입력한 합산 지출 ${man(currentTotal)} → ${now}`, lines };
+  const headline = currentTotal > 0 ? `현재 입력한 합산 지출 ${man(currentTotal)} → ${now}` : '올해 카드·현금 지출을 얼마나 쓸지에 따라 아래 구간 중 하나를 고르세요';
+  return { headline, lines };
 }

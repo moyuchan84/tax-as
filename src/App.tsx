@@ -61,7 +61,7 @@ function load(): HouseholdInput {
 
 export default function App() {
   const [hh, setHh] = useState<HouseholdInput>(load);
-  const [tab, setTab] = useState<Tab>('plan');
+  const [tab, setTab] = useState<Tab>('guide');
   const [toast, setToast] = useState('');
   const deferred = useDeferredValue(hh);
   const resultsRef = useRef<HTMLElement>(null);

@@ -6,9 +6,11 @@ import type { OptimizeResult } from '../tax/optimizer';
 import type { Tip } from '../tax/strategy';
 import type { HouseholdInput, Spouse } from '../tax/types';
 import { PlanPanel } from './PlanPanel';
+import { StartGuide } from './StartGuide';
 
-export type Tab = 'plan' | 'alloc' | 'tips' | 'detail';
+export type Tab = 'guide' | 'plan' | 'alloc' | 'tips' | 'detail';
 const TABS: { id: Tab; label: string }[] = [
+  { id: 'guide', label: '시작 가이드' },
   { id: 'plan', label: '지출 플랜' },
   { id: 'alloc', label: '추천 배분' },
   { id: 'tips', label: '전략 가이드' },
@@ -33,6 +35,8 @@ export function ResultPanel({ hh, opt, tips, tab, onTab }: Props) {
           </button>
         ))}
       </div>
+
+      {tab === 'guide' && <StartGuide hh={hh} />}
 
       {tab === 'plan' && <PlanPanel hh={hh} opt={opt} />}
 
