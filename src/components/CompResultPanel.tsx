@@ -5,7 +5,7 @@ import { man, pct, won } from '../tax/format';
 import { RULES } from '../tax/rules';
 import type { Tip } from '../tax/strategy';
 
-export type CompTab = 'tips' | 'shift' | 'detail' | 'ref';
+export type CompTab = 'tips' | 'calendar' | 'shift' | 'detail' | 'ref';
 
 /** 화면 맨 위 요약 보드 */
 export function CompBoard({ hh, opt, tips, includeShift, onMore }: { hh: CompHousehold; opt: CompOptimizeResult; tips: Tip[]; includeShift: boolean; onMore: () => void }) {
@@ -246,6 +246,53 @@ function Detail({ hh, opt, includeShift }: { hh: CompHousehold; opt: CompOptimiz
   );
 }
 
+const SCHEDULE: { m: number; when: string; text: string; show: (hh: CompHousehold) => boolean }[] = [
+  { m: 1, when: '1월 25일', text: '부가가치세 확정신고(7~12월분) — 과세사업자. 간이과세자는 1월 25일까지 연 1회 신고', show: (h) => h.people.some((p) => p.hasBusiness || p.hasRental) },
+  { m: 2, when: '2월 10일', text: '사업장현황신고(면세사업자) · 직원이 있으면 지급명세서 제출(원천세 연말정산)', show: (h) => h.people.some((p) => p.hasBusiness) },
+  { m: 5, when: '5월 1~31일', text: '종합소득세 신고·납부 (성실신고확인 대상은 6월 30일). 근로소득이 있어도 사업·임대 소득이 있으면 합산 신고. 지방소득세는 별도 신고', show: () => true },
+  { m: 7, when: '7월 25일', text: '부가가치세 예정·확정신고(1~6월분) — 일반과세자. 상가 임대인도 해당', show: (h) => h.people.some((p) => p.hasBusiness || p.hasRental) },
+  { m: 9, when: '9~10월', text: '올해 매출·경비 중간 정리. 경비 증빙(세금계산서·현금영수증·카드) 누락 점검, 간편장부 기장 시작', show: (h) => h.people.some((p) => p.hasBusiness) },
+  { m: 11, when: '11월 30일', text: '중간예납 납부 (직전연도 종합소득세의 1/2, 고지서 기준). 소규모 사업자 등은 면제', show: (h) => h.people.some((p) => p.hasBusiness) },
+  { m: 12, when: '12월 31일', text: '마감: 노란우산공제·연금저축·IRP 납입, 기부, 사업용 지출·장비 구입(올해 비용 처리) — 이후 건은 내년', show: () => true },
+];
+
+function Calendar({ hh, tips }: { hh: CompHousehold; tips: Tip[] }) {
+  const now = new Date().getMonth() + 1;
+  const items = SCHEDULE.filter((s) => s.show(hh));
+  const upcoming = items.find((s) => s.m >= now) ?? items[0];
+  const extras = tips.filter((t) => t.kind === 'extra').sort((a, b) => (b.saving ?? 0) - (a.saving ?? 0));
+  return (
+    <div className="roadmap">
+      <h3>연간 세금 일정</h3>
+      <p className="muted">해당하는 것만 챙기세요. 지금은 {now}월이고, 다음 일정은 <b>{upcoming.when}</b>입니다.</p>
+      <ol className="checkpoints">
+        {items.map((s) => (
+          <li key={s.when} className={s === upcoming ? 'now' : ''}>
+            <b>{s.when}{s === upcoming ? ' · 다음 일정' : ''}</b>
+            <span>{s.text}</span>
+          </li>
+        ))}
+      </ol>
+      <h4>12월 31일 전에 하면 효과 있는 것 (효과 큰 순)</h4>
+      {extras.length === 0 ? (
+        <p className="muted">추가로 납입해서 줄일 수 있는 항목이 없습니다.</p>
+      ) : (
+        <ol className="todo">
+          {extras.map((t, i) => (
+            <li key={i} className="do">
+              <div className="todo-head">
+                <span>{t.title}</span>
+              </div>
+              <p>{t.detail}</p>
+            </li>
+          ))}
+        </ol>
+      )}
+      <p className="muted">모든 일정은 휴일·연도에 따라 달라질 수 있으니 홈택스 공지를 확인하세요.</p>
+    </div>
+  );
+}
+
 function Reference() {
   const R = RULES.brackets;
   let prev = 0;
@@ -316,6 +363,7 @@ function Reference() {
 export function CompResultPanel({ hh, opt, tips, tab, onTab, includeShift }: { hh: CompHousehold; opt: CompOptimizeResult; tips: Tip[]; tab: CompTab; onTab: (t: CompTab) => void; includeShift: boolean }) {
   const tabs: { id: CompTab; label: string }[] = [
     { id: 'tips', label: '전략 가이드' },
+    { id: 'calendar', label: '연간 일정' },
     ...(!hh.single && hh.people.some((p) => p.hasBusiness || p.hasRental) ? [{ id: 'shift' as const, label: '소득 분산' }] : []),
     { id: 'detail', label: '세금 계산' },
     { id: 'ref', label: '기준 정보' },
@@ -346,6 +394,7 @@ export function CompResultPanel({ hh, opt, tips, tab, onTab, includeShift }: { h
           </ul>
         </div>
       )}
+      {tab === 'calendar' && <Calendar hh={hh} tips={tips} />}
       {tab === 'shift' && <ShiftTab hh={hh} opt={opt} />}
       {tab === 'detail' && <Detail hh={hh} opt={opt} includeShift={includeShift} />}
       {tab === 'ref' && <Reference />}

@@ -3,7 +3,7 @@ import type { OptimizeResult } from '../tax/optimizer';
 import type { Tip } from '../tax/strategy';
 
 /** 화면 맨 위: 입력하자마자 보이는 "올해 이렇게 하세요" 요약 */
-export function ActionBoard({ opt, tips, onMore, single }: { opt: OptimizeResult; tips: Tip[]; onMore: () => void; single?: boolean }) {
+export function ActionBoard({ opt, tips, onMore, single, actual }: { opt: OptimizeResult; tips: Tip[]; onMore: () => void; single?: boolean; actual?: boolean }) {
   const moves = tips
     .filter((t) => t.level === 'action' && t.kind !== 'extra' && (t.saving ?? 0) > 0)
     .sort((a, b) => (b.saving ?? 0) - (a.saving ?? 0));
@@ -15,7 +15,7 @@ export function ActionBoard({ opt, tips, onMore, single }: { opt: OptimizeResult
   return (
     <section className="board" aria-label="추천 요약">
       <div className="board-hero">
-        <div className="hero-label">{single ? '예상 세금(소득세+지방세)' : '부부 합산 세금(소득세+지방세) 예상'}</div>
+        <div className="hero-label">{single ? '예상 세금(소득세+지방세)' : actual ? '부부 합산 세금 — 남은 지출을 지금 비율대로 쓰면 → 이렇게 배분하면' : '부부 합산 세금(소득세+지방세) 예상'}</div>
         <div className="hero-flow">
           {!single && <span className="from">{won(b.total)}</span>}
           {!single && <span className="arrow">→</span>}
@@ -26,7 +26,7 @@ export function ActionBoard({ opt, tips, onMore, single }: { opt: OptimizeResult
             '아래 항목을 챙기면 더 줄일 수 있어요'
           ) : opt.savings > 0 ? (
             <>
-              명의만 바꿔도 <b>{won(opt.savings)}</b> 절세
+              {actual ? '남은 기간 배분만 바꿔도' : '명의만 바꿔도'} <b>{won(opt.savings)}</b> 절세
             </>
           ) : (
             '지금 배분이 이미 최적에 가깝습니다'

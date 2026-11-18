@@ -3,10 +3,12 @@ import { ActionBoard } from './components/ActionBoard';
 import { InputPanel } from './components/InputPanel';
 import { ResultPanel, type Tab } from './components/ResultPanel';
 import { won } from './tax/format';
+import { isActual } from './tax/household';
 import { optimizeHousehold } from './tax/optimizer';
+import { defaultMonth, monthsLeft, toActual, toPlan } from './tax/timeline';
 import { describeProfile, newWageHousehold, profileKey, type Profile } from './tax/profile';
 import { RULES } from './tax/rules';
-import { emptyPerson, sampleHousehold, sampleSingle } from './tax/sample';
+import { emptyPerson, sampleHousehold, sampleSingle, sampleYearEnd } from './tax/sample';
 import { buildStrategy } from './tax/strategy';
 import type { HouseholdInput } from './tax/types';
 
@@ -25,6 +27,8 @@ function normalize(raw: unknown, single: boolean): HouseholdInput | null {
     housing: { ...b.housing, ...r.housing },
     flex: { ...b.flex, ...r.flex },
     single,
+    time: r.time,
+    remaining: r.remaining,
   };
 }
 
@@ -66,6 +70,8 @@ export default function WageApp({ profile, seed, onRestart }: { profile: Profile
   const [tab, setTab] = useState<Tab>('guide');
   const [toast, setToast] = useState('');
   const deferred = useDeferredValue(hh);
+  const actual = isActual(hh);
+  const nowMonth = new Date().getMonth() + 1;
   const resultsRef = useRef<HTMLElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -119,6 +125,19 @@ export default function WageApp({ profile, seed, onRestart }: { profile: Profile
     }
   };
 
+  /** 계획 ↔ 연말 점검 전환 (연간 예상 ↔ 지금까지 실제 + 남은 기간으로 변환) */
+  const switchMode = (mode: 'plan' | 'actual') => {
+    if (mode === 'actual' && !actual) {
+      setHh(toActual(hh, hh.time?.month ?? defaultMonth()));
+      setTab('roadmap');
+      setToast('연말 점검으로 전환했어요. 입력한 연간 예상을 ‘지금까지 + 남은 기간’으로 나눴으니 실제값으로 고쳐 주세요.');
+    } else if (mode === 'plan' && actual) {
+      setHh(toPlan(hh));
+      setTab('guide');
+      setToast('계획 모드로 전환했어요. 남은 기간 지출은 지금까지의 비율대로 각자에게 합쳤습니다.');
+    }
+  };
+
   const goMore = () => {
     setTab('tips');
     resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -136,8 +155,8 @@ export default function WageApp({ profile, seed, onRestart }: { profile: Profile
         </div>
         <div className="actions">
           <button type="button" className="primary" onClick={onRestart}>구성 변경</button>
-          <button type="button" onClick={() => setHh(single ? sampleSingle() : sampleHousehold())}>예시</button>
-          <button type="button" onClick={() => setHh(newWageHousehold(profile))}>초기화</button>
+          <button type="button" onClick={() => setHh(actual ? sampleYearEnd(single) : single ? sampleSingle() : sampleHousehold())}>예시</button>
+          <button type="button" onClick={() => setHh({ ...newWageHousehold(profile), ...(actual ? { time: { mode: 'actual' as const, month: hh.time?.month ?? defaultMonth() } } : {}) })}>초기화</button>
           {!single && (
             <button type="button" onClick={copyLink}>링크 공유</button>
           )}
@@ -157,14 +176,32 @@ export default function WageApp({ profile, seed, onRestart }: { profile: Profile
         </div>
       </header>
 
-      <ActionBoard opt={opt} tips={tips} onMore={goMore} single={single} />
+      {!actual && nowMonth >= 9 && (
+        <div className="banner" role="note">
+          <span>
+            지금은 <b>{nowMonth}월</b>입니다. 연말이 가까우면 예상값 대신 <b>지금까지 실제값</b>으로 점검하는 편이 정확해요.
+          </span>
+          <button type="button" className="primary" onClick={() => switchMode('actual')}>
+            연말 점검으로 전환
+          </button>
+        </div>
+      )}
+      {actual && (
+        <div className="banner actual" role="note">
+          <span>
+            <b>연말 점검</b> · {hh.time?.month}월 말까지 실제 + 남은 {monthsLeft(hh)}개월. 이미 쓴 카드는 고정하고 남은 지출만 배분합니다.
+          </span>
+        </div>
+      )}
+
+      <ActionBoard opt={opt} tips={tips} onMore={goMore} single={single} actual={actual} />
 
       <main>
         <section className="left" aria-label="입력">
-          <InputPanel hh={hh} onChange={setHh} />
+          <InputPanel hh={hh} onChange={setHh} onMode={switchMode} />
         </section>
         <section className="right" id="results" ref={resultsRef} aria-label="결과">
-          <ResultPanel hh={deferred} opt={opt} tips={tips} tab={tab} onTab={setTab} />
+          <ResultPanel hh={deferred} opt={opt} tips={tips} tab={tab} onTab={setTab} onSwitchMode={switchMode} />
         </section>
       </main>
 

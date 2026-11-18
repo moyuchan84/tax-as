@@ -15,6 +15,7 @@ import { RULES } from './rules';
 import type { HouseholdInput, Spouse } from './types';
 import { man, pct, won } from './format';
 import { breakevenLines, cardBreakeven } from './plan';
+import { isActual } from './household';
 
 export interface Tip {
   title: string;
@@ -103,8 +104,9 @@ export function buildStrategy(hh: HouseholdInput, opt: OptimizeResult): Tip[] {
     const line = (k: PooledKey) => `${labelOf(k)} ${nH} ${man(best.h[k])} / ${nW} ${man(totals[k] - best.h[k])}`;
     if (!single) tips.push({
       level: s > 0 ? 'action' : 'info',
-      title: `카드 사용 배분: ${nH} ${man(hCard)} · ${nW} ${man(wCard)}`,
+      title: `${isActual(hh) ? '남은 기간 ' : ''}카드 사용 배분: ${nH} ${man(hCard)} · ${nW} ${man(wCard)}`,
       detail:
+        (isActual(hh) ? '이미 쓴 카드는 명의를 바꿀 수 없어 남은 기간 지출만 배분합니다. ' : '') +
         `최저사용금액(총급여의 25%)은 ${nH} ${man(R.h.card.minSpend)}, ${nW} ${man(R.w.card.minSpend)}입니다. ` +
         `이 금액까지는 공제가 0원이므로 혜택이 많은 신용카드(포인트·할인)로 채우고, 넘는 부분은 공제율이 높은 체크카드·현금영수증(30%)이나 전통시장·대중교통(40%)을 쓰세요. ` +
         `기본한도: ${nH} ${man(R.h.card.baseLimit)}(자녀 ${R.h.card.kids}명), ${nW} ${man(R.w.card.baseLimit)}(자녀 ${R.w.card.kids}명). ` +
@@ -127,7 +129,7 @@ export function buildStrategy(hh: HouseholdInput, opt: OptimizeResult): Tip[] {
   }
 
   // 3-1. 카드: 고소득자 vs 저소득자, 누구에게 몰아야 하나
-  if (!single && CARD_KEYS.some((k) => totals[k] > 0)) {
+  if (!single && !isActual(hh) && CARD_KEYS.some((k) => totals[k] > 0)) {
     const be = cardBreakeven(R);
     if (be) {
       const cur = CARD_KEYS.reduce((t, k) => t + totals[k], 0);

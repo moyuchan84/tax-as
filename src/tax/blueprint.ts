@@ -60,6 +60,8 @@ function strip(hh: HouseholdInput): HouseholdInput {
   });
   return {
     ...hh,
+    time: undefined,
+    remaining: undefined,
     husband: z(hh.husband),
     wife: z(hh.wife),
     dependents: hh.dependents.map((d) => ({ ...d, medical: 0, education: 0, educationType: 'none' as const })),

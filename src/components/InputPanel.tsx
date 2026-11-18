@@ -4,9 +4,15 @@ import { man, pct } from '../tax/format';
 import { STYLES, STYLE_LABEL, annualSalary, cardSum, detectStyle, estimateWithheld, splitSpend, type SpendStyle } from '../tax/plan';
 import { newDependent } from '../tax/sample';
 import type { DependentInput, EducationType, HouseholdInput, PersonProfile, Relation, Spouse } from '../tax/types';
+import { isActual } from '../tax/household';
+import { paceRemaining } from '../tax/timeline';
 import { Check, IntInput, MoneyInput, PairRow, Section, SingleCtx } from './inputs';
+import { TimeControl } from './TimeControl';
 
-type Props = { hh: HouseholdInput; onChange: (hh: HouseholdInput) => void };
+type Props = { hh: HouseholdInput; onChange: (hh: HouseholdInput) => void; onMode: (m: 'plan' | 'actual') => void };
+
+const CARD_LABELS = { credit: '신용카드', debitCash: '체크·현금영수증', market: '전통시장', transport: '대중교통', culture: '문화·체육' } as const;
+const ZERO_CARD = { credit: 0, debitCash: 0, market: 0, transport: 0, culture: 0 };
 
 const MORTGAGE_CAPS = [
   { v: 20_000_000, label: '2,000만 (15년↑ 고정+비거치)' },
@@ -80,7 +86,8 @@ function QuickSpend({ p, onApply }: { p: PersonProfile; onApply: (c: PersonProfi
   );
 }
 
-export function InputPanel({ hh, onChange }: Props) {
+export function InputPanel({ hh, onChange, onMode }: Props) {
+  const actual = isActual(hh);
   const setPerson = (who: Spouse, patch: Partial<PersonProfile>) => {
     const key = who === 'h' ? 'husband' : 'wife';
     onChange({ ...hh, [key]: { ...hh[key], ...patch } });
@@ -109,6 +116,7 @@ export function InputPanel({ hh, onChange }: Props) {
   return (
     <SingleCtx.Provider value={single}>
     <div className="inputs">
+      <TimeControl hh={hh} onChange={onChange} onMode={onMode} />
       <p className="guide">
         <span className="step">1</span> 소득 <i>→</i> <span className="step">2</span> 올해 예상 지출 <i>→</i> <span className="step">3</span> 가족. 값을 바꾸면 오른쪽 추천이 바로 갱신됩니다. 금액은 모두 <strong>만원</strong> 단위입니다.
       </p>
@@ -182,10 +190,10 @@ export function InputPanel({ hh, onChange }: Props) {
         />
       </Section>
 
-      <Section title="2. 올해 예상 지출" hint="이미 쓴 금액 + 12월까지 쓸 금액">
+      <Section title={actual ? '2. 지금까지 실제 + 남은 기간' : '2. 올해 예상 지출'} hint={actual ? '이미 쓴 건 고정, 남은 지출만 배분' : '올해 전체(이미 쓴 금액 + 12월까지 쓸 금액)'}>
         <PairRow
-          label="카드·현금 총지출"
-          hint="총액과 소비 성향만 고르면 아래 세부 항목이 자동으로 채워져요"
+          label={actual ? '지금까지 카드·현금 사용' : '카드·현금 총지출'}
+          hint={actual ? '각자 명의로 실제 사용한 금액 (바꿀 수 없음)' : '총액과 소비 성향만 고르면 아래 세부 항목이 자동으로 채워져요'}
           {...both((p, set) => <QuickSpend p={p} onApply={(cards) => set({ cards })} />)}
         />
         <details className="helper wide">
@@ -198,6 +206,25 @@ export function InputPanel({ hh, onChange }: Props) {
             {card('culture', '도서·공연·헬스장·수영장', '30%, 총급여 7천 이하')}
           </div>
         </details>
+        {actual && (
+          <div className="remaining-box">
+            <div className="rb-head">
+              <b>남은 기간 예상 지출 {single ? '' : '(부부 합계)'}</b>
+              <button type="button" className="link" onClick={() => onChange({ ...hh, remaining: paceRemaining(hh) })}>
+                지금 속도로 채우기
+              </button>
+            </div>
+            <p className="muted">{single ? '남은 기간에 쓸 것으로 예상하는 금액입니다.' : '누가 쓸지 아직 정해지지 않은 금액입니다. 어느 카드로 쓰면 좋을지 오른쪽에서 추천해 드려요.'}</p>
+            <div className="rb-grid">
+              {(Object.keys(CARD_LABELS) as (keyof typeof CARD_LABELS)[]).map((k) => (
+                <label key={k}>
+                  <span>{CARD_LABELS[k]}</span>
+                  <MoneyInput ariaLabel={`남은 기간 ${CARD_LABELS[k]}`} value={(hh.remaining ?? ZERO_CARD)[k]} onChange={(v) => onChange({ ...hh, remaining: { ...(hh.remaining ?? ZERO_CARD), [k]: v } })} />
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
         {!single && (
           <Check checked={hh.flex.cards} onChange={(v) => onChange({ ...hh, flex: { ...hh.flex, cards: v } })}>
             부부 간에 카드 사용을 옮길 수 있음 (최적화 대상)

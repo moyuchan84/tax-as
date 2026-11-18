@@ -49,14 +49,19 @@ export interface HouseholdResult {
   total: number; // 부부 합산 소득세+지방소득세
 }
 
+export const isActual = (hh: HouseholdInput) => hh.time?.mode === 'actual';
+const ZERO_CARD = { credit: 0, debitCash: 0, market: 0, transport: 0, culture: 0 };
+
 export function pooledTotals(hh: HouseholdInput): Record<PooledKey, number> {
   const { husband: H, wife: W } = hh;
+  // 연말 점검: 이미 쓴 카드는 명의가 고정이므로, 배분 대상은 남은 기간 지출뿐
+  const c = (k: keyof typeof ZERO_CARD) => (isActual(hh) ? (hh.remaining ?? ZERO_CARD)[k] : H.cards[k] + W.cards[k]);
   return {
-    credit: H.cards.credit + W.cards.credit,
-    debitCash: H.cards.debitCash + W.cards.debitCash,
-    market: H.cards.market + W.cards.market,
-    transport: H.cards.transport + W.cards.transport,
-    culture: H.cards.culture + W.cards.culture,
+    credit: c('credit'),
+    debitCash: c('debitCash'),
+    market: c('market'),
+    transport: c('transport'),
+    culture: c('culture'),
     hMed: H.medical,
     wMed: W.medical,
     donGeneral: H.donations.general + W.donations.general,
@@ -68,15 +73,27 @@ export function pooledTotals(hh: HouseholdInput): Record<PooledKey, number> {
 /** 사용자가 입력한 "현재 상태" 그대로의 배분 */
 export function baselineAllocation(hh: HouseholdInput): Allocation {
   const H = hh.husband;
+  const W = hh.wife;
+  // 연말 점검의 기준선: 남은 기간에도 지금까지 쓰던 비율대로 쓴다
+  const rem = hh.remaining ?? ZERO_CARD;
+  const sum = (p: typeof H) => p.cards.credit + p.cards.debitCash + p.cards.market + p.cards.transport + p.cards.culture;
+  const frac = (k: keyof typeof ZERO_CARD) => {
+    if (hh.single) return 1;
+    const a = H.cards[k];
+    const b = W.cards[k];
+    if (a + b > 0) return a / (a + b);
+    return sum(H) + sum(W) > 0 ? sum(H) / (sum(H) + sum(W)) : 0.5;
+  };
+  const card = (k: keyof typeof ZERO_CARD) => (isActual(hh) ? rem[k] * frac(k) : H.cards[k]);
   return {
     deps: hh.dependents.map((d) => d.assignedTo),
     head: hh.housing.head,
     h: {
-      credit: H.cards.credit,
-      debitCash: H.cards.debitCash,
-      market: H.cards.market,
-      transport: H.cards.transport,
-      culture: H.cards.culture,
+      credit: card('credit'),
+      debitCash: card('debitCash'),
+      market: card('market'),
+      transport: card('transport'),
+      culture: card('culture'),
       hMed: H.medical,
       wMed: 0,
       donGeneral: H.donations.general,
@@ -120,6 +137,7 @@ export function buildPersonInputs(hh: HouseholdInput, a: Allocation, totals = po
     const other = who === 'h' ? hh.wife : hh.husband;
     const share = (k: PooledKey) => (who === 'h' ? a.h[k] : totals[k] - a.h[k]);
     const isHead = a.head === who;
+    const fixedCard = (k: keyof typeof ZERO_CARD) => (isActual(hh) ? p.cards[k] : 0);
     // 외벌이: 배우자 소득이 요건 이하이면 소득이 더 높은 쪽이 배우자 기본공제를 받는다
     const claimsSpouse =
       !hh.single && other.salary <= RULES.personal.spouseWageLimit && (p.salary > other.salary || (p.salary === other.salary && who === 'h'));
@@ -134,11 +152,12 @@ export function buildPersonInputs(hh: HouseholdInput, a: Allocation, totals = po
       social: socialOf(p),
       dependents: [...resolved.filter((_, i) => a.deps[i] === who), ...spouseDep],
       cards: {
-        credit: share('credit'),
-        debitCash: share('debitCash'),
-        market: share('market'),
-        transport: share('transport'),
-        culture: share('culture'),
+        // 연말 점검: 이미 쓴 금액(명의 고정) + 남은 기간 배분분
+        credit: fixedCard('credit') + share('credit'),
+        debitCash: fixedCard('debitCash') + share('debitCash'),
+        market: fixedCard('market') + share('market'),
+        transport: fixedCard('transport') + share('transport'),
+        culture: fixedCard('culture') + share('culture'),
       },
       // 남편 의료비 중 남편이 결제한 몫 = 본인 의료비, 아내가 결제한 몫 = 아내 입장에서 배우자 의료비
       ownMedical: who === 'h' ? a.h.hMed : totals.wMed - a.h.wMed,
