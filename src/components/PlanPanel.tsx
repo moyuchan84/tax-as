@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { man, pct, won } from '../tax/format';
+import { isActual } from '../tax/household';
 
 const n = (v: number) => Math.round(v / 10_000).toLocaleString('ko-KR');
 import type { OptimizeResult } from '../tax/optimizer';
@@ -58,7 +59,8 @@ function Cell({ c, nH, nW }: { c: PlanCell; nH: string; nW: string }) {
 export function PlanPanel({ hh, opt }: { hh: HouseholdInput; opt: OptimizeResult }) {
   const nH = hh.husband.name || '남편';
   const nW = hh.wife.name || '아내';
-  const rows = useMemo(() => (hh.single ? [] : cardPlan(hh, opt.best)), [hh, opt.best]);
+  const actual = isActual(hh);
+  const rows = useMemo(() => (hh.single || actual ? [] : cardPlan(hh, opt.best)), [hh, opt.best, actual]);
   const ms = useMemo(() => milestones(hh, opt.best, opt.bestResult), [hh, opt.best, opt.bestResult]);
   const r = opt.bestResult;
   const be = useMemo(() => cardBreakeven(opt.bestResult), [opt.bestResult]);
@@ -81,7 +83,9 @@ export function PlanPanel({ hh, opt }: { hh: HouseholdInput; opt: OptimizeResult
         ))}
       </div>
 
-      {hh.single ? (
+      {actual ? (
+        <p className="callout">연말 점검 모드에서는 이미 쓴 카드를 옮길 수 없어서 ‘규모별 플랜’ 표를 숨겼습니다. 남은 기간 지출을 누구 카드로 쓸지는 <b>남은 기간 플랜</b> 탭을 보세요.</p>
+      ) : hh.single ? (
         <ul className="rules">
           <li>
             <b>공제 문턱</b>은 총급여의 25%({man(r.h.card.minSpend)})이고 최저사용금액은 <b>신용카드 사용분부터</b> 차감됩니다. 문턱까지는 혜택 좋은 신용카드, 그 위는 체크·현금영수증(30%)이나 전통시장·대중교통(40%)이 유리합니다.

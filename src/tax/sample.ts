@@ -1,3 +1,4 @@
+import { toActual } from './timeline';
 import type { DependentInput, HouseholdInput, PersonProfile } from './types';
 
 const M = 10_000;
@@ -88,4 +89,10 @@ export function sampleSingle(): HouseholdInput {
     flex: { cards: false, medical: false, donations: false },
     single: true,
   };
+}
+
+/** 연말 점검 예시: 예시 가구의 10월 말까지 실제 사용액과 남은 2개월 예상 */
+export function sampleYearEnd(single = false): HouseholdInput {
+  const base = single ? sampleSingle() : sampleHousehold();
+  return toActual(base, 10);
 }

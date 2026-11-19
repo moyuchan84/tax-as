@@ -48,3 +48,39 @@ describe('부부 최적화', () => {
     expect(r.best.h.donPolitical).toBe(10 * M);
   });
 });
+
+describe('연말 점검(actual) 모드: 이미 쓴 카드는 명의 고정, 남은 지출만 배분', () => {
+  const base = () => {
+    const hh = sampleHousehold();
+    hh.time = { mode: 'actual', month: 10 };
+    // 10월 말까지 실제: 남편 신용 1,000만, 아내 신용 300만. 남은 기간 예상: 신용 400만
+    hh.husband.cards = { credit: 1000 * M, debitCash: 0, market: 0, transport: 0, culture: 0 };
+    hh.wife.cards = { credit: 300 * M, debitCash: 0, market: 0, transport: 0, culture: 0 };
+    hh.remaining = { credit: 400 * M, debitCash: 0, market: 0, transport: 0, culture: 0 };
+    return hh;
+  };
+  it('배분 대상 총액은 남은 기간 지출이다', async () => {
+    const { pooledTotals } = await import('./household');
+    expect(pooledTotals(base()).credit).toBe(400 * M);
+  });
+  it('기준선은 지금까지 쓰던 비율(남편 1000:아내 300)대로 남은 지출을 나눈다', async () => {
+    const { baselineAllocation } = await import('./household');
+    expect(baselineAllocation(base()).h.credit).toBeCloseTo((400 * M * 1000) / 1300, 0);
+  });
+  it('각자의 카드 사용액 = 이미 쓴 금액 + 배분분 (합계는 보존)', async () => {
+    const { buildPersonInputs } = await import('./household');
+    const hh = base();
+    const r = optimizeHousehold(hh);
+    const inp = buildPersonInputs(hh, r.best);
+    expect(inp.h.cards.credit).toBeGreaterThanOrEqual(1000 * M);
+    expect(inp.w.cards.credit).toBeGreaterThanOrEqual(300 * M);
+    expect(Math.round(inp.h.cards.credit + inp.w.cards.credit)).toBe(1700 * M);
+    expect(r.bestResult.total).toBeLessThanOrEqual(r.baselineResult.total);
+  });
+  it('plan 모드와 달리 과거 지출은 옮길 수 없다 (전부 한쪽으로 몰 수 있는 plan보다 절세 폭이 작거나 같다)', () => {
+    const actual = base();
+    const plan = { ...actual, time: { mode: 'plan' as const, month: 10 } };
+    // plan에서는 합계 1,300만 전부 재배분 가능
+    expect(optimizeHousehold(plan).savings).toBeGreaterThanOrEqual(optimizeHousehold(actual).savings);
+  });
+});

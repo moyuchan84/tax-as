@@ -5,21 +5,25 @@ import { POOLED_KEYS, POOLED_LABEL, pooledTotals, type Allocation } from '../tax
 import type { OptimizeResult } from '../tax/optimizer';
 import type { Tip } from '../tax/strategy';
 import type { HouseholdInput, Spouse } from '../tax/types';
+import { isActual } from '../tax/household';
 import { PlanPanel } from './PlanPanel';
+import { RoadmapPanel } from './RoadmapPanel';
 import { StartGuide } from './StartGuide';
 
-export type Tab = 'guide' | 'plan' | 'alloc' | 'tips' | 'detail';
+export type Tab = 'guide' | 'roadmap' | 'plan' | 'alloc' | 'tips' | 'detail';
 const TABS: { id: Tab; label: string }[] = [
   { id: 'guide', label: '시작 가이드' },
+  { id: 'roadmap', label: '실행 플랜' },
   { id: 'plan', label: '지출 플랜' },
   { id: 'alloc', label: '추천 배분' },
   { id: 'tips', label: '전략 가이드' },
   { id: 'detail', label: '상세 계산' },
 ];
 
-type Props = { hh: HouseholdInput; opt: OptimizeResult; tips: Tip[]; tab: Tab; onTab: (t: Tab) => void };
+type Props = { hh: HouseholdInput; opt: OptimizeResult; tips: Tip[]; tab: Tab; onTab: (t: Tab) => void; onSwitchMode: (m: 'plan' | 'actual') => void };
 
-export function ResultPanel({ hh, opt, tips, tab, onTab }: Props) {
+export function ResultPanel({ hh, opt, tips, tab, onTab, onSwitchMode }: Props) {
+  const tabs = TABS.filter((t) => !(hh.single && t.id === 'alloc')).map((t) => (t.id === 'roadmap' ? { ...t, label: isActual(hh) ? '남은 기간 플랜' : '월별 실행 플랜' } : t));
   const [view, setView] = useState<'best' | 'baseline'>('best');
   const nH = hh.husband.name || '남편';
   const nW = hh.wife.name || '아내';
@@ -29,7 +33,7 @@ export function ResultPanel({ hh, opt, tips, tab, onTab }: Props) {
   return (
     <div className="results">
       <div className="tabs" role="tablist">
-        {TABS.filter((t) => !(hh.single && t.id === 'alloc')).map((t) => (
+        {tabs.map((t) => (
           <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'tab on' : 'tab'} onClick={() => onTab(t.id)}>
             {t.label}
           </button>
@@ -37,6 +41,8 @@ export function ResultPanel({ hh, opt, tips, tab, onTab }: Props) {
       </div>
 
       {tab === 'guide' && <StartGuide hh={hh} />}
+
+      {tab === 'roadmap' && <RoadmapPanel hh={hh} opt={opt} onSwitchMode={onSwitchMode} />}
 
       {tab === 'plan' && <PlanPanel hh={hh} opt={opt} />}
 

@@ -76,6 +76,12 @@ export interface HouseholdInput {
   flex: FlexOptions;
   /** 싱글(배우자 없음)이면 true — 두 번째 사람 계산·추천을 건너뛴다 */
   single?: boolean;
+  /**
+   * 시점. plan: 입력값 전체가 올해 예상(전부 배분 가능). actual: 카드 입력은 month월 말까지의 실제(명의 고정),
+   * 남은 기간 지출은 `remaining`에 부부 합계로 넣고 누가 쓸지를 최적화한다.
+   */
+  time?: { mode: 'plan' | 'actual'; month: number };
+  remaining?: CardSpend; // actual 모드: 남은 기간 카드·현금 예상 지출(부부 합계)
 }
 
 /** 한 사람의 세액을 계산하기 위한, 배분이 끝난 입력 */
