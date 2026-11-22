@@ -1,5 +1,5 @@
 import { RULES } from './rules';
-import type { CardSpend, PersonTaxInput, ResolvedDependent } from './types';
+import type { CardSpend, PersonTaxInput, ResolvedDependent, DonationInput } from './types';
 
 const R = RULES;
 const floor = (n: number) => Math.floor(n);
@@ -161,10 +161,86 @@ export function hometownCredit(amount: number): number {
   return floor((full * 100) / 110 + tier2 * h.tier2Rate + rest * h.rate);
 }
 
-export function generalDonationCredit(amount: number, earnedIncome: number): number {
-  const g = R.donation.general;
-  const base = Math.min(amount, earnedIncome * g.incomeCapRate);
-  return floor(Math.min(base, g.threshold) * g.rate + pos(base - g.threshold) * g.highRate);
+export type DonationKey = 'statutory' | 'designated' | 'religious' | 'political' | 'hometown';
+export interface DonationLine {
+  key: DonationKey;
+  label: string;
+  paid: number; // 낸 금액
+  limit: number; // 올해 인정 한도
+  allowed: number; // 한도 안에서 인정된 금액
+  credit: number; // 세액공제액(소득세)
+  carryover: number; // 한도 초과 → 10년 이월 (정치자금·고향사랑은 이월 불가)
+}
+export interface DonationBreakdown {
+  lines: DonationLine[];
+  incomeBase: number; // 한도 계산 기준: 근로소득금액
+  mainAllowed: number; // 법정+지정+종교 인정액 합계
+  lowPart: number; // 15% 적용분
+  highPart: number; // 30% 적용분 (1천만원 초과)
+  creditMain: number;
+  creditPolitical: number;
+  creditHometown: number;
+  total: number; // 세액공제 합계(소득세)
+  paid: number;
+  effectiveRate: number; // 세액공제 / 낸 금액
+}
+
+const mainCredit = (x: number) => {
+  const d = R.donation;
+  return Math.min(x, d.threshold) * d.rate + pos(x - d.threshold) * d.highRate;
+};
+
+/**
+ * 기부금 한도·세액공제 계산. 법정 → 종교 외 지정 → 종교 순으로 한도를 적용하고,
+ * 인정액 합계에 15%/30%를 적용한다. 종류별 세액공제액은 이 순서대로 구간(15%→30%)을 채워 배분한다.
+ */
+export function donationBreakdown(d: DonationInput, incomeBase: number): DonationBreakdown {
+  const L = R.donation.limit;
+  const I = pos(incomeBase);
+  const sLimit = I * L.statutory;
+  const sAllowed = Math.min(d.statutory, sLimit);
+  const B = pos(I - sAllowed); // 법정기부금을 뺀 기준금액
+  const nLimit = B * L.designated;
+  const nAllowed = Math.min(d.general, nLimit);
+  // 종교단체: B×10% + min(B×20%, 종교 외 지정기부금). 종교 기부가 없으면 종교 외 지정 한도는 B×30%
+  const desTotalLimit = d.religious > 0 ? B * L.religious + Math.min(B * L.religiousExtra, d.general) : nLimit;
+  const rLimit = pos(desTotalLimit - nAllowed);
+  const rAllowed = Math.min(d.religious, rLimit);
+
+  const mainAllowed = sAllowed + nAllowed + rAllowed;
+  const creditMain = mainCredit(mainAllowed);
+  const slice = (before: number, amt: number) => mainCredit(before + amt) - mainCredit(before);
+  const cS = slice(0, sAllowed);
+  const cN = slice(sAllowed, nAllowed);
+  const cR = slice(sAllowed + nAllowed, rAllowed);
+
+  const pAllowed = Math.min(d.political, I * R.donation.political.limitRate);
+  const cP = politicalCredit(pAllowed);
+  const hAllowed = Math.min(d.hometown, R.donation.hometown.cap);
+  const cH = hometownCredit(hAllowed);
+
+  const lines: DonationLine[] = [
+    { key: 'statutory', label: '법정기부금', paid: d.statutory, limit: sLimit, allowed: sAllowed, credit: floor(cS), carryover: pos(d.statutory - sAllowed) },
+    { key: 'designated', label: '지정기부금(종교 외)', paid: d.general, limit: nLimit, allowed: nAllowed, credit: floor(cN), carryover: pos(d.general - nAllowed) },
+    { key: 'religious', label: '종교단체(헌금)', paid: d.religious, limit: rLimit, allowed: rAllowed, credit: floor(cR), carryover: pos(d.religious - rAllowed) },
+    { key: 'political', label: '정치자금', paid: d.political, limit: I * R.donation.political.limitRate, allowed: pAllowed, credit: cP, carryover: 0 },
+    { key: 'hometown', label: '고향사랑', paid: d.hometown, limit: R.donation.hometown.cap, allowed: hAllowed, credit: cH, carryover: 0 },
+  ];
+  const paid = d.statutory + d.general + d.religious + d.political + d.hometown;
+  const total = floor(creditMain) + cP + cH;
+  return {
+    lines,
+    incomeBase: I,
+    mainAllowed,
+    lowPart: Math.min(mainAllowed, R.donation.threshold),
+    highPart: pos(mainAllowed - R.donation.threshold),
+    creditMain: floor(creditMain),
+    creditPolitical: cP,
+    creditHometown: cH,
+    total,
+    paid,
+    effectiveRate: paid > 0 ? total / paid : 0,
+  };
 }
 
 // ---------------------------------------------------------------- 전체 계산
@@ -211,6 +287,7 @@ export interface TaxResult {
   refund: number | null; // + 환급, - 추가납부
   usedStandard: boolean;
   childCreditCount: number;
+  donation: DonationBreakdown; // 기부금 한도·공제 상세 (표준세액공제를 선택하면 법정·지정·종교 공제는 적용되지 않음)
 }
 
 function compute(p: PersonTaxInput, standard: boolean): TaxResult {
@@ -262,6 +339,7 @@ function compute(p: PersonTaxInput, standard: boolean): TaxResult {
   const marginalRate = taxBase > 0 ? bracketFor(taxBase).rate : 0;
 
   // 세액공제
+  const don = donationBreakdown(p.donations, earnedIncome);
   const credits: Credits = {
     earned: earnedCredit(tax, salary),
     child: 0,
@@ -272,7 +350,7 @@ function compute(p: PersonTaxInput, standard: boolean): TaxResult {
     medical: 0,
     education: 0,
     donation: 0,
-    politicalHometown: politicalCredit(p.donations.political) + hometownCredit(p.donations.hometown),
+    politicalHometown: don.creditPolitical + don.creditHometown,
     rent: 0,
     standard: 0,
   };
@@ -316,7 +394,7 @@ function compute(p: PersonTaxInput, standard: boolean): TaxResult {
     medical = medicalCredit(salary, general, specific);
     credits.medical = medical.credit;
     credits.education = floor(edu * e.rate);
-    credits.donation = generalDonationCredit(p.donations.general, earnedIncome);
+    credits.donation = don.creditMain;
 
     const rr = R.rent;
     if (p.isHead && salary <= rr.salaryLimit) {
@@ -356,6 +434,7 @@ function compute(p: PersonTaxInput, standard: boolean): TaxResult {
     refund: p.withheld > 0 ? p.withheld - determinedTax : null,
     usedStandard: standard,
     childCreditCount: childCreditKids,
+    donation: don,
   };
 }
 

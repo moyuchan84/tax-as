@@ -3,6 +3,7 @@ import {
   DON_KEYS,
   MED_KEYS,
   baselineAllocation,
+  isActual,
   cloneAllocation,
   evaluateHousehold,
   pooledTotals,
@@ -46,7 +47,8 @@ export function optimizeHousehold(hh: HouseholdInput): OptimizeResult {
   const keys: PooledKey[] = [
     ...(hh.flex.cards ? CARD_KEYS : []),
     ...(hh.flex.medical ? MED_KEYS : []),
-    ...(hh.flex.donations ? DON_KEYS : []),
+    // 연말 점검에서는 이미 한 기부(영수증 명의)를 옮길 수 없다
+    ...(hh.flex.donations && !isActual(hh) ? DON_KEYS : []),
   ].filter((k) => totals[k] > 0);
 
   const distance = (a: Allocation) => {

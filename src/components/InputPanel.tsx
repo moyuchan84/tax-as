@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
-import { estimateSocial } from '../tax/engine';
-import { man, pct } from '../tax/format';
+import { donationBreakdown, earnedIncomeDeduction, estimateSocial } from '../tax/engine';
+import { man, pct, won } from '../tax/format';
 import { STYLES, STYLE_LABEL, annualSalary, cardSum, detectStyle, estimateWithheld, splitSpend, type SpendStyle } from '../tax/plan';
 import { newDependent } from '../tax/sample';
 import type { DependentInput, EducationType, HouseholdInput, PersonProfile, Relation, Spouse } from '../tax/types';
@@ -322,9 +322,30 @@ export function InputPanel({ hh, onChange, onMode }: Props) {
             </select>
           ))}
         />
-        {don('general', '일반·특례 기부금', '15%, 1천만 초과 30%')}
-        {don('political', '정치자금', '10만까지 100/110')}
-        {don('hometown', '고향사랑', '10만까지 100/110')}
+        {don('statutory', '법정기부금', '국가·지자체·국방헌금·이재민 · 한도 100%')}
+        {don('general', '지정기부금 (종교 외)', '복지·학교·장학 등 · 한도 30%')}
+        {don('religious', '종교단체 (헌금·십일조)', '한도 10%, 초과분 10년 이월')}
+        {don('political', '정치자금', '10만까지 100/110, 초과 15%')}
+        {don('hometown', '고향사랑', '10만 100/110, 10~20만 40%, 초과 15%')}
+        <PairRow
+          label="세액공제 (추정)"
+          hint="한도 적용 후 · 표준세액공제 선택 시 법정·지정·종교는 제외"
+          {...both((p) => {
+            const base = Math.max(0, p.salary - earnedIncomeDeduction(p.salary));
+            const d = donationBreakdown(p.donations, base);
+            return d.paid > 0 ? (
+              <div className="don-inline">
+                <b>{won(d.total)}</b>
+                <small>낸 돈의 {pct(d.effectiveRate)} (지방세 별도 +10%)</small>
+              </div>
+            ) : (
+              <span className="muted">-</span>
+            );
+          })}
+        />
+        <p className="note">
+          법정·지정·종교 인정액 합계는 1천만원 이하 15%, 초과분 30%입니다. 한도·이월·비율 상세와 ‘기부를 더 하면?’은 결과의 <b>기부금</b> 탭에서 보세요.
+        </p>
         {!single && (
           <Check checked={hh.flex.donations} onChange={(v) => onChange({ ...hh, flex: { ...hh.flex, donations: v } })}>
             기부 명의를 나눌 수 있음 (최적화 대상)

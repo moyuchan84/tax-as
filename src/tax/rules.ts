@@ -100,12 +100,24 @@ export const RULES = {
   /** 자녀세액공제 (verify: 2026년 귀속 대상 연령 9세 이상으로 상향 보도) */
   child: { minAge: 9, amounts: [250_000, 300_000, 400_000], birth: [300_000, 500_000, 700_000], verify: true },
 
-  /** 기부금 */
+  /**
+   * 기부금 (근로소득자, 소득세법 59조의4 · 조특법 76조 · 고향사랑기부금법)
+   * - 한도(근로소득금액 기준): 법정기부금 100% → 지정기부금(종교 외) 30% → 종교단체 10%
+   *   종교단체 한도 = (소득금액 − 법정) × 10% + min(소득금액 × 20%, 종교 외 지정기부금)
+   * - 법정·지정·종교 인정액 합계: 1천만원 이하 15%, 초과분 30%. 한도 초과분은 10년간 이월공제
+   * - 정치자금: 10만원 이하 100/110, 10만~3천만원 15%, 3천만원 초과 25% (한도 소득금액 100%)
+   * - 고향사랑: 10만원 이하 100/110, 10만~20만원 40%, 20만원 초과 15% (소득세 기준. 지방세 포함 44%·16.5%), 연 2천만원 한도
+   * 미반영: 우리사주조합 기부금, 이월공제 입력, 특별재난지역 고향사랑 30%, 2027년 고향사랑 지역차등안(개편안 단계)
+   * 3년 이상 연속 기부 우대 공제율은 확인되지 않아 적용하지 않음
+   */
   donation: {
-    general: { rate: 0.15, highRate: 0.3, threshold: 10_000_000, incomeCapRate: 0.3 },
-    political: { fullUpTo: 100_000, rate: 0.15, highRate: 0.25, highThreshold: 30_000_000 },
-    /** 고향사랑기부금: 10만 이하 100/110, 10만~20만 40% (verify), 초과 15%, 한도 2천만 */
-    hometown: { fullUpTo: 100_000, tier2UpTo: 200_000, tier2Rate: 0.4, rate: 0.15, cap: 20_000_000, verify: true },
+    limit: { statutory: 1, designated: 0.3, religious: 0.1, religiousExtra: 0.2 },
+    rate: 0.15,
+    highRate: 0.3,
+    threshold: 10_000_000,
+    carryYears: 10,
+    political: { limitRate: 1, fullUpTo: 100_000, rate: 0.15, highRate: 0.25, highThreshold: 30_000_000 },
+    hometown: { fullUpTo: 100_000, tier2UpTo: 200_000, tier2Rate: 0.4, rate: 0.15, cap: 20_000_000, verify: false },
   },
 
   standardCredit: 130_000,

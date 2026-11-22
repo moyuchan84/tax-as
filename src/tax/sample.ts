@@ -23,7 +23,7 @@ export function emptyPerson(name: string): PersonProfile {
     housingSubscription: 0,
     mortgageInterest: 0,
     mortgageCap: 8_000_000,
-    donations: { general: 0, political: 0, hometown: 0 },
+    donations: { statutory: 0, general: 0, religious: 0, political: 0, hometown: 0 },
     marriage: false,
     withheld: 0,
   };
@@ -56,7 +56,7 @@ export function sampleHousehold(): HouseholdInput {
       medical: 80 * M,
       insurance: 120 * M,
       pensionSavings: 300 * M,
-      donations: { general: 60 * M, political: 0, hometown: 10 * M },
+      donations: { statutory: 0, general: 60 * M, religious: 120 * M, political: 0, hometown: 10 * M },
     },
     wife: {
       ...emptyPerson('아내'),
@@ -65,7 +65,7 @@ export function sampleHousehold(): HouseholdInput {
       cards: { credit: 600 * M, debitCash: 400 * M, market: 30 * M, transport: 40 * M, culture: 20 * M },
       medical: 150 * M,
       insurance: 80 * M,
-      donations: { general: 0, political: 0, hometown: 0 },
+      donations: { statutory: 0, general: 0, religious: 0, political: 0, hometown: 0 },
     },
     dependents: [
       newDependent({ name: '첫째', age: 11, educationType: 'school', education: 400 * M, medical: 60 * M, assignedTo: 'h' }),
@@ -82,7 +82,7 @@ export function sampleSingle(): HouseholdInput {
   const s = sampleHousehold();
   return {
     ...s,
-    husband: { ...s.husband, name: '본인', salary: 6000 * M, age: 34, medical: 40 * M, insurance: 60 * M, cards: { credit: 1200 * M, debitCash: 500 * M, market: 20 * M, transport: 40 * M, culture: 20 * M }, donations: { general: 0, political: 0, hometown: 10 * M }, pensionSavings: 200 * M },
+    husband: { ...s.husband, name: '본인', salary: 6000 * M, age: 34, medical: 40 * M, insurance: 60 * M, cards: { credit: 1200 * M, debitCash: 500 * M, market: 20 * M, transport: 40 * M, culture: 20 * M }, donations: { statutory: 0, general: 0, religious: 0, political: 0, hometown: 10 * M }, pensionSavings: 200 * M },
     wife: emptyPerson('배우자'),
     dependents: [],
     housing: { head: 'h', headLocked: true, rent: 0, leaseLoanRepay: 0 },

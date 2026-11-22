@@ -164,17 +164,48 @@ export function buildStrategy(hh: HouseholdInput, opt: OptimizeResult): Tip[] {
   }
 
   // 5. 기부금
-  if (!single && hh.flex.donations && DON_KEYS.some((k) => totals[k] > 0)) {
+  if (!single && hh.flex.donations && !isActual(hh) && DON_KEYS.some((k) => totals[k] > 0)) {
     const s = partialSaving(hh, opt, (a) => DON_KEYS.forEach((k) => (a.h[k] = best.h[k])));
+    const split = (k: PooledKey) => `${nH} ${man(best.h[k])} / ${nW} ${man(totals[k] - best.h[k])}`;
     tips.push({
       level: s > 0 ? 'action' : 'info',
-      title: '기부금 명의 나누기',
+      title: '기부금·헌금 명의 정하기',
       detail:
-        `정치자금·고향사랑 기부금은 1인당 10만원까지 100/110(사실상 전액)을 돌려받습니다. 부부가 각각 10만원씩 기부하면 둘 다 혜택을 받을 수 있습니다. ` +
-        `고향사랑은 10만~20만원 구간 ${pct(RULES.donation.hometown.tier2Rate)}, 그 이상은 15%입니다. 일반 기부금은 결정세액이 남는 사람 명의로 하세요. ` +
-        `권장: 일반 ${nH} ${man(best.h.donGeneral)}/${nW} ${man(totals.donGeneral - best.h.donGeneral)}, 정치 ${nH} ${man(best.h.donPolitical)}/${nW} ${man(totals.donPolitical - best.h.donPolitical)}, 고향사랑 ${nH} ${man(best.h.donHometown)}/${nW} ${man(totals.donHometown - best.h.donHometown)}.`,
+        `① 법정·지정·종교 기부금은 인정액 합계 1천만원 이하 15%, 초과분 30%입니다. 한 사람에게 몰면 1천만원 초과분에 30%가 적용되지만, 한도(지정 30%, 종교 10%)는 근로소득금액 기준이라 소득금액이 큰 쪽이 유리합니다. ` +
+        `② 정치자금·고향사랑은 각 10만원까지 100/110(사실상 전액) 환급이라 부부가 각각 하면 2배입니다(고향사랑 10~20만원 구간 ${pct(RULES.donation.hometown.tier2Rate)}, 초과 15%). ` +
+        `③ 영수증은 기부한 사람 명의로 발급되니 기부 전에 정하세요. ` +
+        `권장 → 법정 ${split('donStatutory')}, 지정 ${split('donGeneral')}, 종교 ${split('donReligious')}, 정치 ${split('donPolitical')}, 고향사랑 ${split('donHometown')}.`,
       saving: s || undefined,
     });
+  }
+  // 기부금 현황: 한도 초과·표준세액공제 경고
+  for (const who of whos) {
+    const r = R[who];
+    const d = r.donation;
+    if (d.paid <= 0) continue;
+    tips.push({
+      level: 'info',
+      title: `${NAME(hh, who)}: 기부금 ${man(d.paid)} → 세액공제 ${won(d.total)} (낸 돈의 ${pct(d.effectiveRate)})`,
+      detail: d.lines
+        .filter((l) => l.paid > 0)
+        .map((l) => `${l.label} ${man(l.paid)}: 인정 ${man(l.allowed)}(한도 ${man(l.limit)}) → ${won(l.credit)}`)
+        .join(' · ') + (d.highPart > 0 ? ` · 1천만원 초과분 ${man(d.highPart)}는 30% 적용.` : ''),
+    });
+    const over = d.lines.filter((l) => l.carryover > 0);
+    if (over.length > 0) {
+      tips.push({
+        level: 'warn',
+        title: `${NAME(hh, who)}: 기부금 한도 초과 ${man(over.reduce((t, l) => t + l.carryover, 0))}`,
+        detail: `${over.map((l) => `${l.label} ${man(l.carryover)}`).join(', ')}은(는) 올해 한도를 넘어 공제되지 않습니다. 법정·지정·종교 기부금의 한도 초과분은 ${RULES.donation.carryYears}년간 이월해 공제받을 수 있으니 영수증을 보관하세요. 한도가 더 큰 배우자 명의로 기부하는 방법도 있습니다.`,
+      });
+    }
+    if (r.usedStandard && d.creditMain > 0) {
+      tips.push({
+        level: 'warn',
+        title: `${NAME(hh, who)}: 표준세액공제가 적용되어 기부금 공제(${won(d.creditMain)})는 반영되지 않았습니다`,
+        detail: `항목별 공제(보험료·의료비·교육비·기부금 등)의 합이 표준세액공제 ${won(RULES.standardCredit)}보다 작아 표준공제가 자동 적용됩니다. 이 경우 법정·지정·종교 기부금 공제는 받지 못하고 정치자금·고향사랑만 적용됩니다.`,
+      });
+    }
   }
 
   // 6. 소멸되는 세액공제

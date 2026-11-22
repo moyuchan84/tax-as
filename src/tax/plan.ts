@@ -79,7 +79,7 @@ export function estimateWithheld(hh: HouseholdInput, who: Spouse): number {
     rent: 0,
     leaseLoanRepay: 0,
     mortgageInterest: 0,
-    donations: { general: 0, political: 0, hometown: 0 },
+    donations: { statutory: 0, general: 0, religious: 0, political: 0, hometown: 0 },
     marriage: false,
     dependents: p.dependents.map((d) => ({ ...d, medical: 0, education: 0 })),
   };

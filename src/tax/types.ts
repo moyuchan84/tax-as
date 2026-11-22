@@ -12,7 +12,9 @@ export type EducationType = 'none' | 'preschool' | 'school' | 'university' | 'di
 export type Relation = 'child' | 'parent' | 'other' | 'spouse';
 
 export interface DonationInput {
-  general: number; // 특례·일반 기부금 (종교 포함 단순화)
+  statutory: number; // 법정기부금 (국가·지자체·국방헌금·이재민 구호금품 등) — 한도 소득금액 100%
+  general: number; // 지정기부금 중 종교 외 (사회복지·학교·문화예술·장학 등) — 한도 30%
+  religious: number; // 종교단체 기부금(헌금·십일조·시주) — 한도 10%
   political: number; // 정치자금
   hometown: number; // 고향사랑
 }

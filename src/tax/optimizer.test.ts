@@ -38,7 +38,7 @@ describe('부부 최적화', () => {
 
   it('정치자금 기부는 부부가 10만원씩 나누는 편이 유리', () => {
     const hh: HouseholdInput = {
-      husband: { ...emptyPerson('남편'), salary: 6000 * M, donations: { general: 0, political: 20 * M, hometown: 0 } },
+      husband: { ...emptyPerson('남편'), salary: 6000 * M, donations: { statutory: 0, general: 0, religious: 0, political: 20 * M, hometown: 0 } },
       wife: { ...emptyPerson('아내'), salary: 5000 * M },
       dependents: [newDependent({ age: 30, relation: 'other', locked: true })],
       housing: { head: 'h', headLocked: true, rent: 0, leaseLoanRepay: 0 },
@@ -82,5 +82,26 @@ describe('연말 점검(actual) 모드: 이미 쓴 카드는 명의 고정, 남�
     const plan = { ...actual, time: { mode: 'plan' as const, month: 10 } };
     // plan에서는 합계 1,300만 전부 재배분 가능
     expect(optimizeHousehold(plan).savings).toBeGreaterThanOrEqual(optimizeHousehold(actual).savings);
+  });
+});
+
+describe('기부금 배분', () => {
+  const mk = (mode: 'plan' | 'actual'): HouseholdInput => ({
+    husband: { ...emptyPerson('남편'), salary: 9000 * M, donations: { statutory: 0, general: 0, religious: 2000 * M, political: 0, hometown: 0 } },
+    wife: { ...emptyPerson('아내'), salary: 3000 * M },
+    dependents: [],
+    housing: { head: 'h', headLocked: true, rent: 0, leaseLoanRepay: 0 },
+    flex: { cards: false, medical: false, donations: true },
+    time: { mode, month: 10 },
+  });
+  it('계획 모드: 종교단체 한도는 소득금액 10%라 소득이 큰 쪽에 있어도 한도 초과분은 배우자와 나눌 수 있다', () => {
+    const r = optimizeHousehold(mk('plan'));
+    expect(r.bestResult.total).toBeLessThanOrEqual(r.baselineResult.total);
+    expect(r.savings).toBeGreaterThan(0);
+  });
+  it('연말 점검 모드: 이미 한 기부는 명의를 옮기지 않는다', () => {
+    const r = optimizeHousehold(mk('actual'));
+    expect(r.best.h.donReligious).toBe(2000 * M);
+    expect(r.savings).toBe(0);
   });
 });

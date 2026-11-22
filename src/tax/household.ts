@@ -14,7 +14,9 @@ export const POOLED_KEYS = [
   'culture',
   'hMed',
   'wMed',
+  'donStatutory',
   'donGeneral',
+  'donReligious',
   'donPolitical',
   'donHometown',
 ] as const;
@@ -28,14 +30,16 @@ export const POOLED_LABEL: Record<PooledKey, string> = {
   culture: '도서·공연·체육시설',
   hMed: '남편 의료비',
   wMed: '아내 의료비',
-  donGeneral: '일반·특례 기부금',
+  donStatutory: '법정기부금',
+  donGeneral: '지정기부금(종교 외)',
+  donReligious: '종교단체 기부금(헌금)',
   donPolitical: '정치자금 기부금',
   donHometown: '고향사랑 기부금',
 };
 
 export const CARD_KEYS: PooledKey[] = ['credit', 'debitCash', 'market', 'transport', 'culture'];
 export const MED_KEYS: PooledKey[] = ['hMed', 'wMed'];
-export const DON_KEYS: PooledKey[] = ['donGeneral', 'donPolitical', 'donHometown'];
+export const DON_KEYS: PooledKey[] = ['donStatutory', 'donGeneral', 'donReligious', 'donPolitical', 'donHometown'];
 
 export interface Allocation {
   deps: Spouse[]; // 부양가족별 공제 받는 사람
@@ -64,7 +68,9 @@ export function pooledTotals(hh: HouseholdInput): Record<PooledKey, number> {
     culture: c('culture'),
     hMed: H.medical,
     wMed: W.medical,
+    donStatutory: H.donations.statutory + W.donations.statutory,
     donGeneral: H.donations.general + W.donations.general,
+    donReligious: H.donations.religious + W.donations.religious,
     donPolitical: H.donations.political + W.donations.political,
     donHometown: H.donations.hometown + W.donations.hometown,
   };
@@ -96,7 +102,9 @@ export function baselineAllocation(hh: HouseholdInput): Allocation {
       culture: card('culture'),
       hMed: H.medical,
       wMed: 0,
+      donStatutory: H.donations.statutory,
       donGeneral: H.donations.general,
+      donReligious: H.donations.religious,
       donPolitical: H.donations.political,
       donHometown: H.donations.hometown,
     },
@@ -175,7 +183,9 @@ export function buildPersonInputs(hh: HouseholdInput, a: Allocation, totals = po
       mortgageInterest: p.mortgageInterest,
       mortgageCap: p.mortgageCap,
       donations: {
+        statutory: share('donStatutory'),
         general: share('donGeneral'),
+        religious: share('donReligious'),
         political: share('donPolitical'),
         hometown: share('donHometown'),
       },

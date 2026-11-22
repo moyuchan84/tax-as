@@ -6,16 +6,18 @@ import type { OptimizeResult } from '../tax/optimizer';
 import type { Tip } from '../tax/strategy';
 import type { HouseholdInput, Spouse } from '../tax/types';
 import { isActual } from '../tax/household';
+import { DonationPanel } from './DonationPanel';
 import { PlanPanel } from './PlanPanel';
 import { RoadmapPanel } from './RoadmapPanel';
 import { StartGuide } from './StartGuide';
 
-export type Tab = 'guide' | 'roadmap' | 'plan' | 'alloc' | 'tips' | 'detail';
+export type Tab = 'guide' | 'roadmap' | 'plan' | 'alloc' | 'donation' | 'tips' | 'detail';
 const TABS: { id: Tab; label: string }[] = [
   { id: 'guide', label: '시작 가이드' },
   { id: 'roadmap', label: '실행 플랜' },
   { id: 'plan', label: '지출 플랜' },
   { id: 'alloc', label: '추천 배분' },
+  { id: 'donation', label: '기부금' },
   { id: 'tips', label: '전략 가이드' },
   { id: 'detail', label: '상세 계산' },
 ];
@@ -91,6 +93,8 @@ export function ResultPanel({ hh, opt, tips, tab, onTab, onSwitchMode }: Props) 
           <AllocationTable hh={hh} opt={opt} />
         </div>
       )}
+
+      {tab === 'donation' && <DonationPanel hh={hh} opt={opt} />}
 
       {tab === 'tips' && (
         <div>
