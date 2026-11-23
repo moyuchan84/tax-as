@@ -35,7 +35,7 @@ function person(over: Partial<PersonTaxInput> = {}): PersonTaxInput {
     leaseLoanRepay: 0,
     mortgageInterest: 0,
     mortgageCap: 0,
-    donations: { general: 0, political: 0, hometown: 0 },
+    donations: { statutory: 0, general: 0, religious: 0, political: 0, hometown: 0 },
     marriage: false,
     withheld: 0,
     ...over,
@@ -141,5 +141,70 @@ describe('외벌이 배우자공제', () => {
     // 싱글이면 배우자공제 없음
     const single = buildPersonInputs({ ...hh, single: true }, baselineAllocation(hh));
     expect(single.h.dependents).toEqual([]);
+  });
+});
+
+import { donationBreakdown } from './engine';
+const D = (over: Partial<PersonTaxInput['donations']> = {}) => ({ statutory: 0, general: 0, religious: 0, political: 0, hometown: 0, ...over });
+
+describe('기부금 한도·세액공제', () => {
+  it('지정기부금(종교 외)은 소득금액 30% 한도, 1천만원 이하 15%', () => {
+    const b = donationBreakdown(D({ general: 300 * M }), 5000 * M);
+    expect(b.mainAllowed).toBe(300 * M);
+    expect(b.creditMain).toBe(45 * M);
+    expect(b.effectiveRate).toBeCloseTo(0.15, 6);
+    // 소득금액 1,000만원이면 한도 300만원
+    expect(donationBreakdown(D({ general: 500 * M }), 1000 * M).lines[1].allowed).toBe(300 * M);
+  });
+  it('종교단체만 있으면 소득금액 10% 한도, 초과분은 이월', () => {
+    const b = donationBreakdown(D({ religious: 800 * M }), 4000 * M);
+    expect(b.lines[2].limit).toBe(400 * M);
+    expect(b.lines[2].allowed).toBe(400 * M);
+    expect(b.lines[2].carryover).toBe(400 * M);
+    expect(b.creditMain).toBe(60 * M);
+  });
+  it('지정기부금 전체 한도 = 10% + min(소득금액 20%, 종교 외 지정) → 종교 몫은 min(10%, 30% − 종교 외 지정)', () => {
+    // 소득 4,000만, 종교 외 지정 200만 → 전체 한도 400 + min(800, 200) = 600만 → 종교 몫 400만(=10%)
+    const b = donationBreakdown(D({ general: 200 * M, religious: 900 * M }), 4000 * M);
+    expect(b.lines[2].limit).toBe(400 * M);
+    expect(b.lines[2].allowed).toBe(400 * M);
+    expect(b.mainAllowed).toBe(600 * M);
+    expect(b.lines[2].carryover).toBe(500 * M);
+    // 종교 외 지정을 1,000만 쓰면 전체 한도 400+800=1,200만 → 종교 몫은 200만으로 줄어든다
+    const c = donationBreakdown(D({ general: 1000 * M, religious: 2000 * M }), 4000 * M);
+    expect(c.lines[1].allowed).toBe(1000 * M);
+    expect(c.lines[2].limit).toBe(200 * M);
+    expect(c.mainAllowed).toBe(1200 * M); // 소득금액의 30%를 넘지 못함
+  });
+  it('법정기부금은 소득금액 100%까지, 그만큼 종교·지정 한도 기준금액이 줄어든다', () => {
+    const b = donationBreakdown(D({ statutory: 1000 * M, general: 5000 * M }), 3000 * M);
+    expect(b.lines[0].allowed).toBe(1000 * M);
+    expect(b.lines[1].limit).toBe(600 * M); // (3000−1000)×30%
+  });
+  it('인정액 합계 1천만원 초과분은 30%, 종류별 공제액 합은 전체와 같다', () => {
+    const b = donationBreakdown(D({ statutory: 600 * M, general: 800 * M }), 20000 * M);
+    expect(b.mainAllowed).toBe(1400 * M);
+    expect(b.lowPart).toBe(1000 * M);
+    expect(b.highPart).toBe(400 * M);
+    expect(b.creditMain).toBe(150 * M + 120 * M);
+    const sum = b.lines.slice(0, 3).reduce((s, l) => s + l.credit, 0);
+    expect(Math.abs(sum - b.creditMain)).toBeLessThanOrEqual(2);
+  });
+  it('정치자금·고향사랑은 한도/구간별 공제율이 따로 적용된다', () => {
+    const b = donationBreakdown(D({ political: 4000 * M, hometown: 20 * M }), 50000 * M);
+    expect(b.creditPolitical).toBe(Math.floor((10 * M * 100) / 110 + 2990 * M * 0.15 + 1000 * M * 0.25));
+    expect(b.creditHometown).toBe(Math.floor((10 * M * 100) / 110 + 10 * M * 0.4));
+    expect(b.total).toBe(b.creditPolitical + b.creditHometown);
+  });
+  it('표준세액공제가 적용되면 법정·지정·종교 기부금 공제는 세액에 반영되지 않는다', () => {
+    const r = computePersonTax(person({ salary: 5000 * M, donations: D({ general: 20 * M }) }));
+    expect(r.usedStandard).toBe(true);
+    expect(r.credits.donation).toBe(0);
+    expect(r.donation.creditMain).toBeGreaterThan(0); // 가정 계산은 따로 보여줌
+  });
+  it('항목별 공제가 더 크면 기부금이 세액공제에 반영된다', () => {
+    const r = computePersonTax(person({ salary: 5000 * M, donations: D({ general: 300 * M, religious: 200 * M }) }));
+    expect(r.usedStandard).toBe(false);
+    expect(r.credits.donation).toBe(r.donation.creditMain);
   });
 });

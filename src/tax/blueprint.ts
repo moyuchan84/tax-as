@@ -55,7 +55,7 @@ function strip(hh: HouseholdInput): HouseholdInput {
     irp: 0,
     housingSubscription: 0,
     mortgageInterest: 0,
-    donations: { general: 0, political: 0, hometown: 0 },
+    donations: { statutory: 0, general: 0, religious: 0, political: 0, hometown: 0 },
     withheld: 0,
   });
   return {

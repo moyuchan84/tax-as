@@ -353,3 +353,14 @@ select { max-width: 100%; }
 .todo p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
 .checkpoints li.now::before { background: var(--good); width: 12px; height: 12px; left: -7px; }
 .checkpoints li.now b { color: var(--good); }
+
+/* ---------- 기부금 ---------- */
+.don-person { border: 1px solid var(--line); border-radius: 10px; padding: 4px 12px 8px; margin-bottom: 12px; }
+.don-person h4, .donation h4 { margin: 10px 0 6px; font-size: 14px; }
+.don-table td, .don-table th { font-size: 12px; }
+table.ref-table td, table.ref-table th { text-align: left; font-size: 12px; white-space: normal; }
+.don-inline { display: flex; flex-direction: column; }
+.don-inline small { color: var(--muted); font-size: 11px; }
+.don-sim { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-bottom: 6px; }
+.don-sim label { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: var(--muted); }
+.warnline { color: var(--warn); }
