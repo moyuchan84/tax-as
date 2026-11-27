@@ -1,4 +1,4 @@
-import { computePersonTax, type TaxResult } from './engine';
+import { computePersonTax, pensionCaps, type TaxResult } from './engine';
 import { man, man0, pct } from './format';
 import {
   CARD_KEYS,
@@ -239,8 +239,9 @@ export function milestones(hh: HouseholdInput, best: Allocation, res: { h: TaxRe
     // 연금계좌
     const p = inputs[who];
     const cap = RULES.pension;
-    const paid = Math.min(p.pensionSavings, cap.savingsCap) + p.irp;
-    const room = Math.max(0, cap.totalCap - paid);
+    const caps = pensionCaps(p.salary);
+    const paid = Math.min(p.pensionSavings, caps.savingsCap) + p.irp;
+    const room = Math.max(0, caps.totalCap - paid);
     const rate = p.salary <= cap.salaryThreshold ? cap.highRate : cap.lowRate;
     let pnote: string;
     if (room <= 0) pnote = '연금계좌 세액공제 한도를 모두 채웠습니다.';
@@ -255,8 +256,8 @@ export function milestones(hh: HouseholdInput, best: Allocation, res: { h: TaxRe
       key: 'pension',
       title: '연금저축·IRP 납입',
       current: paid,
-      max: cap.totalCap,
-      marks: [{ at: cap.totalCap, label: '한도' }],
+      max: caps.totalCap,
+      marks: [{ at: caps.totalCap, label: '한도' }],
       note: pnote,
       tone: room <= 0 ? 'ok' : 'info',
     });

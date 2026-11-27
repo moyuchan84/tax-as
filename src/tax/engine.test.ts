@@ -208,3 +208,23 @@ describe('기부금 한도·세액공제', () => {
     expect(r.credits.donation).toBe(r.donation.creditMain);
   });
 });
+
+import { pensionCaps } from './engine';
+describe('연금계좌 한도: 총급여 1.2억 초과는 축소', () => {
+  it('일반은 600/900만, 총급여 1.2억 초과는 300/700만', () => {
+    expect(pensionCaps(5000 * M)).toMatchObject({ savingsCap: 600 * M, totalCap: 900 * M, reduced: false });
+    expect(pensionCaps(12_000 * M)).toMatchObject({ totalCap: 900 * M, reduced: false });
+    expect(pensionCaps(15_000 * M)).toMatchObject({ savingsCap: 300 * M, totalCap: 700 * M, reduced: true });
+    // 근로 외 소득이 함께 있으면 종합소득금액 1억 초과로 판단
+    expect(pensionCaps(6000 * M, 11_000 * M).reduced).toBe(true);
+    expect(pensionCaps(6000 * M, 9000 * M).reduced).toBe(false);
+  });
+  it('총급여 1.5억: 연금저축 600만+IRP 300만을 넣어도 공제 대상은 합산 700만원까지', () => {
+    const base = computePersonTax(person({ salary: 15_000 * M }));
+    const a = computePersonTax(person({ salary: 15_000 * M, pensionSavings: 600 * M, irp: 300 * M }));
+    const b = computePersonTax(person({ salary: 15_000 * M, pensionSavings: 300 * M, irp: 400 * M }));
+    expect(a.credits.pension).toBe(b.credits.pension); // 둘 다 700만원 인정
+    expect(a.credits.pension).toBe(Math.floor(700 * M * 0.12));
+    expect(base.credits.pension).toBe(0);
+  });
+});

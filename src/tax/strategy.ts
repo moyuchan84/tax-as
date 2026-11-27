@@ -1,4 +1,4 @@
-import { computePersonTax } from './engine';
+import { computePersonTax, pensionCaps } from './engine';
 import {
   CARD_KEYS,
   DON_KEYS,
@@ -225,7 +225,8 @@ export function buildStrategy(hh: HouseholdInput, opt: OptimizeResult): Tip[] {
   for (const who of whos) {
     const p = inputs[who];
     const cap = RULES.pension;
-    const room = Math.max(0, cap.totalCap - Math.min(p.pensionSavings, cap.savingsCap) - p.irp);
+    const caps = pensionCaps(p.salary);
+    const room = Math.max(0, caps.totalCap - Math.min(p.pensionSavings, caps.savingsCap) - p.irp);
     if (room <= 0) continue;
     const after = computePersonTax({ ...p, irp: p.irp + room });
     const gain = R[who].totalTax - after.totalTax;
@@ -235,7 +236,7 @@ export function buildStrategy(hh: HouseholdInput, opt: OptimizeResult): Tip[] {
         level: 'action',
         kind: 'extra',
         title: `${NAME(hh, who)}: 연금저축·IRP ${man(room)} 추가 납입 시 ${won(gain)} 절세`,
-        detail: `연금계좌는 합산 연 ${man(cap.totalCap)}(연금저축 ${man(cap.savingsCap)} 이내)까지 ${pct(rate * 1.1)}(지방세 포함) 세액공제됩니다. 12월 31일까지 납입분이 대상입니다. 결정세액이 0이 되면 그 이상은 효과가 없으니, 세금이 남는 사람에게 먼저 넣으세요.`,
+        detail: `연금계좌는 합산 연 ${man(caps.totalCap)}(연금저축 ${man(caps.savingsCap)} 이내)까지 ${pct(rate * 1.1)}(지방세 포함) 세액공제됩니다.${caps.reduced ? ' 총급여 1.2억 초과라 한도가 줄어듭니다.' : ''} 12월 31일까지 납입분이 대상입니다. 결정세액이 0이 되면 그 이상은 효과가 없으니, 세금이 남는 사람에게 먼저 넣으세요.`,
         saving: gain,
       });
     }

@@ -84,7 +84,18 @@ export const RULES = {
   insurance: { rate: 0.12, cap: 1_000_000, disabledRate: 0.15, disabledCap: 1_000_000 },
 
   /** 연금계좌 세액공제 */
-  pension: { savingsCap: 6_000_000, totalCap: 9_000_000, highRate: 0.15, lowRate: 0.12, salaryThreshold: 55_000_000 },
+  /**
+   * 연금계좌 세액공제 (소득세법 59조의3). 연금저축 600만 + 퇴직연금(IRP) 합산 900만원.
+   * 총급여 1.2억 초과(종합소득금액 1억 초과)이면 연금저축 300만 + 합산 700만원으로 줄어든다 (국세청 상담 Q&A).
+   */
+  pension: {
+    savingsCap: 6_000_000,
+    totalCap: 9_000_000,
+    highRate: 0.15,
+    lowRate: 0.12,
+    salaryThreshold: 55_000_000,
+    highIncome: { salary: 120_000_000, income: 100_000_000, savingsCap: 3_000_000, totalCap: 7_000_000 },
+  },
 
   /** 월세 세액공제 (무주택 세대주) */
   rent: { salaryLimit: 80_000_000, highRate: 0.17, lowRate: 0.15, rateThreshold: 55_000_000, cap: 10_000_000 },

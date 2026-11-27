@@ -1,3 +1,4 @@
+import { pensionCaps } from './engine';
 import { COMP, compPersonTax, compPersonTaxMode, yellowLimit, type CompHousehold, type CompPerson } from './comp';
 import { ctxFor, evalComp, type CompAlloc, type CompOptimizeResult } from './compHousehold';
 import { man, pct, won } from './format';
@@ -126,8 +127,9 @@ export function buildCompStrategy(hh: CompHousehold, opt: CompOptimizeResult): T
     }
 
     // 5. 연금저축·IRP
-    const pr = RULES.pension;
-    const proom = Math.max(0, pr.totalCap - Math.min(p.pensionSavings, pr.savingsCap) - p.irp);
+    const wageOnly = p.hasWage && !p.hasBusiness && !p.hasRental;
+    const caps = pensionCaps(p.hasWage ? p.wage.salary : 0, wageOnly ? undefined : r.totalIncome);
+    const proom = Math.max(0, caps.totalCap - Math.min(p.pensionSavings, caps.savingsCap) - p.irp);
     if (proom > 0 && r.determinedTax > 0) {
       const g = gainOf(i, (q) => ({ ...q, irp: q.irp + proom }));
       if (g > 0)
@@ -135,7 +137,7 @@ export function buildCompStrategy(hh: CompHousehold, opt: CompOptimizeResult): T
           level: 'action',
           kind: 'extra',
           title: `${name}: 연금저축·IRP ${man(proom)} 추가 납입 시 ${won(g)} 절세`,
-          detail: `연금계좌는 합산 연 ${man(pr.totalCap)}(연금저축 ${man(pr.savingsCap)} 이내)까지 세액공제됩니다. 사업·임대 소득도 연금계좌 세액공제를 받을 수 있으며 12월 31일까지 납입분이 대상입니다.`,
+          detail: `연금계좌는 합산 연 ${man(caps.totalCap)}(연금저축 ${man(caps.savingsCap)} 이내)까지 세액공제됩니다.${caps.reduced ? ' 소득이 높아 한도가 줄어든 구간입니다.' : ''} 사업·임대 소득도 연금계좌 세액공제를 받을 수 있으며 12월 31일까지 납입분이 대상입니다.`,
           saving: g,
         });
     }

@@ -1,4 +1,4 @@
-import { computePersonTax } from './engine';
+import { computePersonTax, pensionCaps } from './engine';
 import { buildPersonInputs } from './household';
 import { optimizeHousehold } from './optimizer';
 import { breakevenLines, cardBreakeven, type Breakeven } from './plan';
@@ -85,7 +85,8 @@ export function buildBlueprint(hh: HouseholdInput): Blueprint {
     const m = r.marginalRate * L;
     const card = r.card;
     const pensionRate = p.salary <= pr.salaryThreshold ? pr.highRate : pr.lowRate;
-    const gain = r.salary > 0 ? Math.max(0, r.totalTax - computePersonTax({ ...p, irp: pr.totalCap }).totalTax) : 0;
+    const caps = pensionCaps(r.salary);
+    const gain = r.salary > 0 ? Math.max(0, r.totalTax - computePersonTax({ ...p, irp: caps.totalCap }).totalTax) : 0;
     const rent = RULES.rent;
     return {
       who,
@@ -104,7 +105,7 @@ export function buildBlueprint(hh: HouseholdInput): Blueprint {
       refund: { credit: c.rates.credit * m, debit: c.rates.debitCash * m, special: c.rates.market * m },
       cultureOk: r.salary <= c.cultureSalaryLimit,
       medicalThr: r.salary * RULES.medical.thresholdRate,
-      pension: { room: pr.totalCap, rate: pensionRate * L, gain },
+      pension: { room: caps.totalCap, rate: pensionRate * L, gain },
       insuranceCredit: RULES.insurance.cap * RULES.insurance.rate,
       rent: { eligible: r.salary <= rent.salaryLimit, max: rent.cap * (r.salary <= rent.rateThreshold ? rent.highRate : rent.lowRate) },
       subscription: {

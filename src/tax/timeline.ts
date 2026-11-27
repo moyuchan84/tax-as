@@ -1,4 +1,4 @@
-import { computePersonTax } from './engine';
+import { computePersonTax, pensionCaps } from './engine';
 import { man, pct } from './format';
 import {
   CARD_KEYS,
@@ -106,12 +106,13 @@ export function monthlyActions(hh: HouseholdInput, opt: OptimizeResult): Monthly
     const r = opt.bestResult[who];
     if (r.salary <= 0) continue;
     const name = nameOf(hh, who);
-    const room = Math.max(0, pr.totalCap - Math.min(p.pensionSavings, pr.savingsCap) - p.irp);
+    const caps = pensionCaps(p.salary);
+    const room = Math.max(0, caps.totalCap - Math.min(p.pensionSavings, caps.savingsCap) - p.irp);
     if (room > 0 && r.determinedTax > 0) {
       const gain = r.totalTax - computePersonTax({ ...p, irp: p.irp + room }).totalTax;
       if (gain > 0) {
         const rate = p.salary <= pr.salaryThreshold ? pr.highRate : pr.lowRate;
-        out.push({ who, name, title: '연금저축·IRP 자동이체', monthly: ceilUnit(room / 12), gain, note: `연 ${man(room)}까지 ${pct(rate * 1.1)} 세액공제 (연금저축은 연 ${man(pr.savingsCap)} 이내)` });
+        out.push({ who, name, title: '연금저축·IRP 자동이체', monthly: ceilUnit(room / 12), gain, note: `연 ${man(room)}까지 ${pct(rate * 1.1)} 세액공제 (연금저축은 연 ${man(caps.savingsCap)} 이내)` });
       }
     }
     const hs = RULES.housingSubscription;
@@ -187,7 +188,6 @@ export interface CheckItem {
 export function yearEndChecklist(hh: HouseholdInput, opt: OptimizeResult): CheckItem[] {
   const items: CheckItem[] = [];
   const inputs = buildPersonInputs(hh, opt.best);
-  const pr = RULES.pension;
   const left = monthsLeft(hh);
   const when = left > 0 ? `남은 ${left}개월 안에` : '12월 31일까지';
 
@@ -198,11 +198,12 @@ export function yearEndChecklist(hh: HouseholdInput, opt: OptimizeResult): Check
     if (r.salary <= 0) continue;
 
     // 연금계좌
-    const room = Math.max(0, pr.totalCap - Math.min(p.pensionSavings, pr.savingsCap) - p.irp);
+    const caps = pensionCaps(p.salary);
+    const room = Math.max(0, caps.totalCap - Math.min(p.pensionSavings, caps.savingsCap) - p.irp);
     if (room > 0 && r.determinedTax > 0) {
       const gain = r.totalTax - computePersonTax({ ...p, irp: p.irp + room }).totalTax;
       if (gain > 0)
-        items.push({ tone: 'do', gain, title: `${name}: 연금저축·IRP ${man(room)} 추가 입금`, detail: `${when} 입금한 금액만 올해 세액공제됩니다. 한 번에 넣어도 되고(IRP는 일시납 가능), 합산 한도는 연 ${man(pr.totalCap)}입니다.` });
+        items.push({ tone: 'do', gain, title: `${name}: 연금저축·IRP ${man(room)} 추가 입금`, detail: `${when} 입금한 금액만 올해 세액공제됩니다. 한 번에 넣어도 되고(IRP는 일시납 가능), 합산 한도는 연 ${man(caps.totalCap)}입니다.` });
     }
 
     // 정치자금·고향사랑 10만원 (10만원까지 100/110 환급)

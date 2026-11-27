@@ -33,6 +33,16 @@ export function earnedCredit(tax: number, salary: number): number {
   return floor(Math.min(base, earnedCreditLimit(salary)));
 }
 
+/**
+ * 연금계좌 납입 한도. 총급여 1.2억 초과(종합소득금액 1억 초과)면 연금저축 300만·합산 700만원.
+ * `totalIncome`은 근로소득 외 소득이 함께 있을 때만 넘긴다(종합소득금액 기준으로 판단).
+ */
+export function pensionCaps(salary: number, totalIncome?: number): { savingsCap: number; totalCap: number; reduced: boolean } {
+  const h = R.pension.highIncome;
+  const reduced = totalIncome !== undefined ? totalIncome > h.income : salary > h.salary;
+  return reduced ? { savingsCap: h.savingsCap, totalCap: h.totalCap, reduced } : { savingsCap: R.pension.savingsCap, totalCap: R.pension.totalCap, reduced };
+}
+
 export function estimateSocial(salary: number) {
   const s = R.social;
   const monthly = Math.min(Math.max(salary / 12, s.pensionMonthlyFloor), s.pensionMonthlyCap);
@@ -365,7 +375,8 @@ function compute(p: PersonTaxInput, standard: boolean): TaxResult {
   }
 
   const pr = R.pension;
-  const pensionBase = Math.min(Math.min(p.pensionSavings, pr.savingsCap) + p.irp, pr.totalCap);
+  const caps = pensionCaps(salary);
+  const pensionBase = Math.min(Math.min(p.pensionSavings, caps.savingsCap) + p.irp, caps.totalCap);
   credits.pension = floor(pensionBase * (salary <= pr.salaryThreshold ? pr.highRate : pr.lowRate));
 
   let medical: MedicalResult;

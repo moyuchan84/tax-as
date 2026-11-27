@@ -136,7 +136,7 @@ export function StartGuide({ hh }: { hh: HouseholdInput }) {
               {cols((p) => man(p.medicalThr))}
             </tr>
             <tr>
-              <td>연금저축+IRP 연 900만원 납입<small>12/31까지 납입분 · 연금저축은 600만 한도</small></td>
+              <td>연금저축+IRP 한도까지 납입<small>12/31까지 납입분 · 합산 900만(연금저축 600만), 총급여 1.2억 초과는 700만(300만)</small></td>
               {cols((p) => `${won(p.pension.gain)} 절세 (공제율 ${pr(p.pension.rate)})`)}
             </tr>
             <tr>

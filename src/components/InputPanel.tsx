@@ -239,8 +239,8 @@ export function InputPanel({ hh, onChange, onMode }: Props) {
         <PairRow label="본인 교육비" hint="대학원·직업훈련 등" {...money((p) => p.ownEducation, (_, v) => ({ ownEducation: v }), '본인 교육비')} />
         <PairRow label="보장성보험료" hint="연 100만 한도 12%" {...money((p) => p.insurance, (_, v) => ({ insurance: v }), '보장성보험료')} />
         <PairRow label="장애인전용보험" {...money((p) => p.disabledInsurance, (_, v) => ({ disabledInsurance: v }), '장애인전용보험')} />
-        <PairRow label="연금저축" hint="600만 한도" {...money((p) => p.pensionSavings, (_, v) => ({ pensionSavings: v }), '연금저축')} />
-        <PairRow label="IRP·퇴직연금" hint="연금저축과 합산 900만" {...money((p) => p.irp, (_, v) => ({ irp: v }), 'IRP')} />
+        <PairRow label="연금저축" hint="600만 한도 (총급여 1.2억 초과 300만)" {...money((p) => p.pensionSavings, (_, v) => ({ pensionSavings: v }), '연금저축')} />
+        <PairRow label="IRP·퇴직연금" hint="연금저축과 합산 900만 (1.2억 초과 700만)" {...money((p) => p.irp, (_, v) => ({ irp: v }), 'IRP')} />
       </Section>
 
       <Section title="3. 가족" hint="자녀·부모님 (소득금액 100만원 이하 가정)">

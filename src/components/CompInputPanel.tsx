@@ -146,8 +146,8 @@ export function CompInputPanel({ hh, onChange, includeShift, onIncludeShift }: P
         )}
 
         <Section title="2. 공제·기납부">
-          <PairRow label="연금저축" hint="600만 한도" {...money((p) => p.pensionSavings, (p, v) => ({ ...p, pensionSavings: v }), '연금저축')} />
-          <PairRow label="IRP·퇴직연금" hint="연금저축과 합산 900만" {...money((p) => p.irp, (p, v) => ({ ...p, irp: v }), 'IRP')} />
+          <PairRow label="연금저축" hint="600만 한도 (소득 1억 초과 300만)" {...money((p) => p.pensionSavings, (p, v) => ({ ...p, pensionSavings: v }), '연금저축')} />
+          <PairRow label="IRP·퇴직연금" hint="연금저축과 합산 900만 (1억 초과 700만)" {...money((p) => p.irp, (p, v) => ({ ...p, irp: v }), 'IRP')} />
           <PairRow label="기타 기납부세액" hint="중간예납 등" {...money((p) => p.prepaid, (p, v) => ({ ...p, prepaid: v }), '기타 기납부세액')} />
         </Section>
 

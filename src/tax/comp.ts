@@ -1,4 +1,4 @@
-import { bracketFor, computedTax, earnedCredit, earnedIncomeDeduction, estimateSocial, isBasicEligible } from './engine';
+import { bracketFor, computedTax, earnedCredit, earnedIncomeDeduction, estimateSocial, isBasicEligible, pensionCaps } from './engine';
 import { RULES } from './rules';
 import type { DependentInput, Spouse } from './types';
 
@@ -191,7 +191,9 @@ function calc(p: CompPerson, ctx: CompCtx, houseMode: 'separate' | 'comprehensiv
   let child = 0;
   for (let i = 0; i < kids; i++) child += childAmts[Math.min(i, childAmts.length - 1)];
   const pr = RULES.pension;
-  const pensionBase = Math.min(Math.min(p.pensionSavings, pr.savingsCap) + p.irp, pr.totalCap);
+  const wageOnly = p.hasWage && !p.hasBusiness && !p.hasRental;
+  const caps = pensionCaps(S, wageOnly ? undefined : totalIncome);
+  const pensionBase = Math.min(Math.min(p.pensionSavings, caps.savingsCap) + p.irp, caps.totalCap);
   const high = p.hasWage ? S <= COMP.pensionCreditThreshold.wage : totalIncome <= COMP.pensionCreditThreshold.income;
   const pension = floor(pensionBase * (high ? pr.highRate : pr.lowRate));
   const bookkeeping =
