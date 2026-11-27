@@ -219,12 +219,14 @@ describe('연금계좌 한도: 총급여 1.2억 초과는 축소', () => {
     expect(pensionCaps(6000 * M, 11_000 * M).reduced).toBe(true);
     expect(pensionCaps(6000 * M, 9000 * M).reduced).toBe(false);
   });
-  it('총급여 1.5억: 연금저축 600만+IRP 300만을 넣어도 공제 대상은 합산 700만원까지', () => {
+  it('총급여 1.5억: 연금저축은 300만까지만 인정, 합산 700만원까지 공제', () => {
     const base = computePersonTax(person({ salary: 15_000 * M }));
-    const a = computePersonTax(person({ salary: 15_000 * M, pensionSavings: 600 * M, irp: 300 * M }));
-    const b = computePersonTax(person({ salary: 15_000 * M, pensionSavings: 300 * M, irp: 400 * M }));
-    expect(a.credits.pension).toBe(b.credits.pension); // 둘 다 700만원 인정
-    expect(a.credits.pension).toBe(Math.floor(700 * M * 0.12));
+    const over = computePersonTax(person({ salary: 15_000 * M, pensionSavings: 600 * M, irp: 300 * M })); // 300 + 300 = 600만 인정
+    const full = computePersonTax(person({ salary: 15_000 * M, pensionSavings: 300 * M, irp: 400 * M })); // 700만 인정
+    const irpOnly = computePersonTax(person({ salary: 15_000 * M, irp: 900 * M })); // 합산 한도 700만
+    expect(over.credits.pension).toBe(Math.floor(600 * M * 0.12));
+    expect(full.credits.pension).toBe(Math.floor(700 * M * 0.12));
+    expect(irpOnly.credits.pension).toBe(full.credits.pension);
     expect(base.credits.pension).toBe(0);
   });
 });
